@@ -1,4 +1,7 @@
 .agents-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
   margin-bottom: 32px;
 }
 
@@ -6,51 +9,19 @@
   margin-bottom: 32px;
 }
 
-.color-palette-section {
-  margin-top: 32px;
-  padding: 16px;
-  background: rgba(60, 68, 71, 0.3);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+h2 {
+  margin-top: 8px;
+  margin-bottom: 24px;
+}
 
-  h3 {
-    color: #ffffff;
-    margin-bottom: 16px;
-    font-size: 18px;
-  }
-
-  .color-palette {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-
-    .color-swatch {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-
-      .color-block {
-        width: 32px;
-        height: 32px;
-        border-radius: 4px;
-        border: 2px solid rgba(255, 255, 255, 0.2);
-        flex-shrink: 0;
-      }
-
-      .color-label {
-        color: #ffffff;
-        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-        font-size: 13px;
-      }
-    }
+@media (max-width: 1024px) {
+  .agents-list {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-h2 {
-  margin-top: 8px; // Reduce spacing from nav
-  margin-bottom: 24px;
+@media (max-width: 640px) {
+  .agents-list {
+    grid-template-columns: 1fr;
+  }
 }

@@ -20,14 +20,3 @@
     </mat-card-content>
   </mat-card>
 </div>
-
-<!-- Color Palette Display -->
-<div class="color-palette-section">
-  <h3>Agent Color Palette</h3>
-  <div class="color-palette">
-    <div *ngFor="let color of getAgentColors(); let i = index" class="color-swatch">
-      <div class="color-block" [style.backgroundColor]="color"></div>
-      <span class="color-label">{{i + 1}}: {{color}}</span>
-    </div>
-  </div>
-</div>
