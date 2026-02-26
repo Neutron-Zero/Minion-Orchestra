@@ -1,0 +1,33 @@
+<div class="agents-list">
+  <app-agent-card 
+    *ngFor="let agent of agents$ | async" 
+    [agent]="agent"
+    (pause)="pauseAgent($event)"
+    (resume)="resumeAgent($event)"
+    (remove)="removeAgent($event)">
+  </app-agent-card>
+</div>
+
+<div *ngIf="(agents$ | async)?.length === 0" class="no-agents">
+  <mat-card>
+    <mat-card-content>
+      <div class="empty-state">
+        <mat-icon class="empty-icon">sentiment_dissatisfied</mat-icon>
+        <h3>No Active Agents</h3>
+        <p>Start a Claude Code session to see agents appear here.</p>
+        <p>Run <code>claude</code> in a terminal or use the CLI tools for monitoring.</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<!-- Color Palette Display -->
+<div class="color-palette-section">
+  <h3>Agent Color Palette</h3>
+  <div class="color-palette">
+    <div *ngFor="let color of getAgentColors(); let i = index" class="color-swatch">
+      <div class="color-block" [style.backgroundColor]="color"></div>
+      <span class="color-label">{{i + 1}}: {{color}}</span>
+    </div>
+  </div>
+</div>

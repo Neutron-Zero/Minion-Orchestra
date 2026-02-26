@@ -1,0 +1,170 @@
+.agent-card-compact {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(60, 68, 71, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 10px solid #E53E3E; // Default color, will be overridden by style binding
+  border-right: 10px solid #E53E3E; // Default color, will be overridden by style binding
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin: 4px 0;
+  min-height: 75px;
+  max-height: 75px;
+  gap: 12px;
+
+  .agent-avatar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    min-width: 80px;
+  }
+
+  .agent-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+
+    mat-icon {
+      font-size: 34px;
+      width: 34px;
+      height: 34px;
+    }
+  }
+
+  .agent-pid {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    text-align: center;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .agent-info {
+    flex: 1;
+    min-width: 0; // Allow text truncation
+
+    .agent-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+
+      .folder-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.6);
+        background: rgba(0, 0, 0, 0.2);
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin-left: 4px;
+      }
+
+
+      .agent-type {
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .status-chip {
+        font-size: 14px;
+        font-weight: 600;
+        color: #ffffff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .current-tool {
+        margin-left: auto;
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.9);
+        font-style: italic;
+      }
+    }
+
+    .agent-task {
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.8);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin: 4px 0;
+    }
+
+    .agent-stats {
+      display: flex;
+      gap: 12px;
+      margin-top: 2px;
+
+      .stat {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.6);
+      }
+    }
+  }
+
+
+  &:hover {
+    background: rgba(70, 78, 81, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  // Pulsing animation for permission requests
+  &.awaiting-permission {
+    animation: pulse-permission 2s ease-in-out infinite;
+    border-left-width: 15px;
+    border-right-width: 15px;
+    
+    .agent-avatar {
+      animation: pulse-avatar 2s ease-in-out infinite;
+    }
+    
+    .agent-pid {
+      color: #ffc107;
+      animation: pulse-text 2s ease-in-out infinite;
+    }
+  }
+}
+
+// Keyframes for permission request animation
+@keyframes pulse-permission {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px 5px rgba(255, 193, 7, 0.4);
+    transform: scale(1.01);
+  }
+}
+
+@keyframes pulse-avatar {
+  0%, 100% {
+    background: rgba(255, 193, 7, 0.2);
+  }
+  50% {
+    background: rgba(255, 193, 7, 0.4);
+  }
+}
+
+@keyframes pulse-text {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}

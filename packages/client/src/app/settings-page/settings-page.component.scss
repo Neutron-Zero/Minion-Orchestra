@@ -1,0 +1,94 @@
+.settings-grid {
+  .status-indicator {
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    
+    &.connected {
+      color: #4caf50;
+      background: rgba(76, 175, 80, 0.1);
+    }
+    
+    &.disconnected {
+      color: #f44336;
+      background: rgba(244, 67, 54, 0.1);
+    }
+  }
+  
+  .control-row {
+    margin: 16px 0;
+    
+    mat-form-field {
+      width: 100%;
+      
+      &.compact-field {
+        .mat-form-field-wrapper {
+          padding-bottom: 0;
+        }
+      }
+    }
+    
+    mat-slide-toggle {
+      margin: 8px 0;
+    }
+  }
+  
+  button {
+    margin-top: 12px;
+    
+    mat-icon {
+      margin-right: 4px;
+    }
+  }
+}
+
+// Dark theme for Material form fields
+::ng-deep {
+  .mat-form-field-appearance-outline {
+    .mat-form-field-outline {
+      color: rgba(255, 255, 255, 0.3);
+    }
+    
+    .mat-form-field-label {
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
+    &.mat-focused {
+      .mat-form-field-outline {
+        color: #ff5722;
+      }
+      
+      .mat-form-field-label {
+        color: #ff5722;
+      }
+    }
+  }
+  
+  .mat-input-element {
+    color: #ffffff;
+  }
+  
+  .mat-form-field-suffix {
+    color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .mat-hint {
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+  
+  .mat-slide-toggle {
+    .mat-slide-toggle-label {
+      color: #ffffff;
+    }
+    
+    &.mat-checked {
+      .mat-slide-toggle-thumb {
+        background-color: #ff5722;
+      }
+      
+      .mat-slide-toggle-bar {
+        background-color: rgba(255, 87, 34, 0.5);
+      }
+    }
+  }
+}

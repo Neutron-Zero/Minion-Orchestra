@@ -1,0 +1,26 @@
+{
+  "name": "minion-orchestra",
+  "private": true,
+  "scripts": {
+    "setup": "node setup.js",
+    "postinstall": "node setup.js",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd packages/server && npm start",
+    "dev:client": "cd packages/client && npm run start:ui",
+    "build": "npm run build:client",
+    "build:client": "cd packages/client && npm run build",
+    "build:standalone": "cd packages/client && npm run build:standalone",
+    "start": "concurrently \"npm run start:server\" \"npm run start:client\"",
+    "start:debug": "concurrently \"npm run start:server:debug\" \"npm run start:client\"",
+    "start:server": "cd packages/server && npm start",
+    "start:server:debug": "cd packages/server && npm run start:debug",
+    "start:client": "cd packages/client && npm run start:ui",
+    "install:all": "cd packages/client && npm install && cd ../server && npm install",
+    "clean": "rm -rf node_modules packages/*/node_modules",
+    "test": "npm run test:client",
+    "test:client": "cd packages/client && npm test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

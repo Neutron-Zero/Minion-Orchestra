@@ -1,0 +1,97 @@
+<h2>Minion Command Settings</h2>
+
+<div class="settings-grid">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Connection Status</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <p>WebSocket Server: 
+        <span class="status-indicator" [class.connected]="connectionStatus$ | async" [class.disconnected]="!(connectionStatus$ | async)">
+          {{ (connectionStatus$ | async) ? 'Connected' : 'Disconnected' }}
+        </span>
+      </p>
+      <p>Server URL: http://localhost:3000</p>
+      <div class="control-row">
+        <mat-slide-toggle [(ngModel)]="autoRetry" (change)="toggleAutoRetry()">
+          Auto-retry connection
+        </mat-slide-toggle>
+      </div>
+      <button mat-raised-button color="primary" (click)="reconnectServer()">
+        <mat-icon>refresh</mat-icon> Reconnect
+      </button>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Monitoring Configuration</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <p>Auto-detect Claude processes: Enabled</p>
+      
+      <div class="control-row">
+        <mat-form-field appearance="outline" class="compact-field">
+          <mat-label>Log Retention</mat-label>
+          <input matInput type="number" [(ngModel)]="logRetention" (change)="updateLogRetention()" min="100" max="10000">
+          <span matSuffix>entries</span>
+        </mat-form-field>
+      </div>
+      
+      <div class="control-row">
+        <mat-form-field appearance="outline" class="compact-field">
+          <mat-label>Update Interval</mat-label>
+          <input matInput type="number" [(ngModel)]="updateInterval" (change)="updateUpdateInterval()" min="1000" max="60000">
+          <span matSuffix>ms</span>
+        </mat-form-field>
+      </div>
+      
+      <div class="control-row">
+        <mat-form-field appearance="outline" class="compact-field">
+          <mat-label>Agent Cleanup Interval</mat-label>
+          <input matInput type="number" [(ngModel)]="cleanupInterval" (change)="updateCleanupInterval()" min="1000" max="300000">
+          <span matSuffix>ms</span>
+        </mat-form-field>
+        <mat-hint>How often to check for dead Claude processes</mat-hint>
+      </div>
+      
+      <button mat-raised-button color="warn" (click)="clearAllLogs()">
+        <mat-icon>delete_sweep</mat-icon> Clear All Logs
+      </button>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Debug Options</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="control-row">
+        <mat-slide-toggle [(ngModel)]="debugMode" (change)="toggleDebugMode()">
+          Debug Logging
+        </mat-slide-toggle>
+        <mat-hint>Console log all WebSocket messages and events</mat-hint>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Testing & Debug</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <p>Test log injection to verify the monitoring system:</p>
+      <div class="test-buttons">
+        <button mat-raised-button color="primary" (click)="injectTestLog('info')">
+          <mat-icon>info</mat-icon> Test Info Log
+        </button>
+        <button mat-raised-button color="accent" (click)="injectTestLog('warning')">
+          <mat-icon>warning</mat-icon> Test Warning
+        </button>
+        <button mat-raised-button color="warn" (click)="injectTestLog('error')">
+          <mat-icon>error</mat-icon> Test Error
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -1,0 +1,34 @@
+<!-- Metrics Section -->
+<div class="metrics-section">
+  <app-charts></app-charts>
+</div>
+
+<!-- Two Column Section: Agents (left) and Logs (right) -->
+<div class="two-column-section">
+  <!-- Agents Column (Left - 50%) -->
+  <div class="column-left">
+    <div class="agents-header">
+      <h3>Agents</h3>
+      <a class="clear-link" (click)="clearAllAgents()" matTooltip="Clear all agents">
+        Clear All
+      </a>
+    </div>
+    <div class="agents-list">
+      <app-agent-card 
+        *ngFor="let agent of agents$ | async" 
+        [agent]="agent"
+        (pause)="pauseAgent($event)"
+        (resume)="resumeAgent($event)"
+        (remove)="removeAgent($event)">
+      </app-agent-card>
+    </div>
+  </div>
+  
+  <!-- Logs Column (Right - 50%) -->
+  <div class="column-right">
+    <h3>Activity</h3>
+    <div class="log-container">
+      <app-log-viewer></app-log-viewer>
+    </div>
+  </div>
+</div>

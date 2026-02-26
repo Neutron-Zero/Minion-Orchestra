@@ -1,0 +1,69 @@
+<!-- Fixed Header -->
+<mat-toolbar class="tall-header custom-header">
+  <div class="toolbar-content">
+    <div class="header-left">
+      <mat-icon class="large-icon">hub</mat-icon>
+      <span class="large-title">Minion Command</span>
+    </div>
+    <div class="header-center">
+      <span class="tagline">Real-time Claude Code Monitoring</span>
+    </div>
+    <div class="header-right">
+      <div class="connection-status">
+        <mat-icon [style.color]="(connectionStatus$ | async) ? '#4caf50' : '#f44336'">
+          {{ (connectionStatus$ | async) ? 'link' : 'link_off' }}
+        </mat-icon>
+        <span class="status-text">{{ (connectionStatus$ | async) ? 'Connected' : 'Disconnected' }}</span>
+      </div>
+    </div>
+  </div>
+</mat-toolbar>
+
+<!-- Page Container -->
+<div class="page-container">
+  <!-- Fixed Navigation Bar -->
+  <nav class="nav-bar">
+    <div class="nav-content">
+      <div class="nav-links" #navLinks>
+        <a class="nav-link" 
+           #navLink
+           routerLink="/overview" 
+           routerLinkActive="active"
+           (click)="onNavLinkClick($event)">Dashboard</a>
+        <a class="nav-link" 
+           #navLink
+           routerLink="/analytics" 
+           routerLinkActive="active"
+           (click)="onNavLinkClick($event)">Agents</a>
+        <a class="nav-link" 
+           #navLink
+           routerLink="/logs" 
+           routerLinkActive="active"
+           (click)="onNavLinkClick($event)">Activity</a>
+        <a class="nav-link" 
+           #navLink
+           routerLink="/setup" 
+           routerLinkActive="active"
+           (click)="onNavLinkClick($event)">Setup Guide</a>
+        <div class="nav-underline" #navUnderline></div>
+      </div>
+      <mat-icon class="settings-gear" routerLink="/settings" routerLinkActive="active" matTooltip="Settings">settings</mat-icon>
+    </div>
+  </nav>
+
+  <!-- Scrollable Content Area with Router Outlet -->
+  <div class="content-area">
+    <router-outlet></router-outlet>
+  </div>
+  
+  <!-- Watermark -->
+  <mat-icon class="watermark-icon">hub</mat-icon>
+</div>
+
+<!-- Fixed Footer -->
+<div class="fixed-footer">
+  <div class="footer-content">
+    <img src="assets/Neutron Zero Logo.png" alt="Neutron Zero" class="footer-logo">
+    <span class="copyright">© 2025 Neutron Zero. All rights reserved.</span>
+  </div>
+</div>

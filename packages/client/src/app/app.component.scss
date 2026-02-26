@@ -1,0 +1,320 @@
+// Main page structure styling
+.page-container {
+  padding: 0;
+  padding-top: 140px;
+  padding-bottom: 40px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgb(23, 29, 33) 0%, rgb(35, 45, 53) 100%);
+  background-attachment: fixed;
+  position: relative;
+}
+
+// Fixed header styling
+.tall-header {
+  height: 80px !important;
+  min-height: 80px !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+.custom-header {
+  background: rgb(23, 29, 33) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toolbar-content {
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  padding: 0 24px;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+
+    .large-icon {
+      font-size: 36px;
+      width: 36px;
+      height: 36px;
+      color: #ff5722;
+    }
+
+    .large-title {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: #f1f5f9;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  .header-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 2;
+
+    .tagline {
+      font-size: 14px;
+      color: #94a3b8;
+      font-weight: 400;
+      text-align: center;
+    }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1;
+    gap: 16px;
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      .status-text {
+        font-size: 13px;
+        font-weight: 500;
+        color: #ffffff;
+      }
+    }
+
+    .tagline {
+      font-size: 14px;
+      color: #cbd5e1;
+      font-style: italic;
+      font-weight: 400;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    }
+  }
+}
+
+// Navigation bar
+.nav-bar {
+  position: fixed;
+  top: 80px;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: rgb(60, 68, 71);
+  z-index: 999;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  .nav-content {
+    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 0;
+    position: relative;
+  }
+
+  .nav-link {
+    padding: 11px 24px;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    text-decoration: none;
+    position: relative;
+    z-index: 2;
+    border-radius: 6px 6px 0 0;
+
+    &:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.05);
+      //   transform: translateY(-4px);
+
+      // Add a subtle orange glow on hover
+      &::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 1px;
+        background: #ff5722;
+        opacity: 0.5;
+        transition: width 0.3s ease;
+        animation: pulse-glow 2s infinite;
+      }
+    }
+
+    &:hover::after {
+      width: 60%;
+    }
+
+    &.active {
+      color: #ffffff;
+      //   background: rgba(255,255,255,0.03);
+    }
+  }
+
+  .nav-underline {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: #ff5722;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1;
+    border-radius: 1.5px 1.5px 0 0;
+    box-shadow: 0 0 8px rgba(255, 87, 34, 0.3);
+
+    // Add a subtle glow effect
+    &::before {
+      content: "";
+      position: absolute;
+      top: -1px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 87, 34, 0.8) 50%,
+        transparent 100%
+      );
+      border-radius: 1px;
+    }
+  }
+
+  .settings-gear {
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+
+    &:hover {
+      color: #ff5722;
+      transform: scale(1.1) rotate(15deg);
+    }
+
+    &:active {
+      transform: scale(0.95) rotate(15deg);
+    }
+
+    &.active {
+      color: #ff5722;
+      transform: rotate(90deg);
+    }
+  }
+}
+
+// Content area for router outlet
+.content-area {
+  padding: 20px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  height: calc(100vh - 160px); // header(80) + nav(40) + footer(40)
+  overflow-y: auto;
+}
+
+// Fixed footer
+.fixed-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: rgb(23, 29, 33);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 1000;
+
+  .footer-content {
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    .footer-logo {
+      height: 24px;
+      width: auto;
+      filter: brightness(0) invert(1);
+      opacity: 0.6;
+    }
+
+    .copyright {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+      text-align: center;
+    }
+  }
+}
+
+// Watermark
+.watermark-icon {
+  position: fixed;
+  bottom: 0px;
+  right: -40px;
+  font-size: 300px !important;
+  width: 300px !important;
+  height: 300px !important;
+  color: rgba(255, 255, 255, 0.05);
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  animation: watermarkRotate 360s linear infinite;
+  transform-origin: center center;
+}
+
+// Animations
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translateX(-50%) scaleX(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateX(-50%) scaleX(1.1);
+  }
+}
+
+// Add subtle animation to the main underline as well
+.nav-underline {
+}
+
+// Watermark rotation animation
+@keyframes watermarkRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
