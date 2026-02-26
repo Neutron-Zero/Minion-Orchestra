@@ -175,8 +175,9 @@ export class AgentCardComponent {
     if (this.agent?.status === 'awaiting-permission' || this.agent?.status === 'permission-requested') {
       return 'rgba(255, 193, 7, 0.1)';
     }
-    if (!agentId) return 'rgba(229, 62, 62, 0.05)'; // Default background
+    if (!agentId) return 'rgba(229, 62, 62, 0.05)';
     const color = this.agentService.getAgentColor(agentId);
+    if (!color || color.length < 7) return 'rgba(229, 62, 62, 0.05)';
     // Convert hex to rgba with 5% opacity for subtle background tint
     const r = parseInt(color.slice(1, 3), 16);
     const g = parseInt(color.slice(3, 5), 16);

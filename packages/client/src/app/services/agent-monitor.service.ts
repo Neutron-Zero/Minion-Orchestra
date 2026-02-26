@@ -371,21 +371,19 @@ export class AgentMonitorService {
   }
 
   private formatAgentId(id: string): string {
-    // Extract last 6 digits from agent ID (e.g., "claude-pid-12345" -> "12345" -> "12345")
     if (!id) return 'Unknown';
-    
-    // Remove "claude-" prefix if present
-    const cleanId = id.replace(/^claude-/, '');
-    
-    // If it's a PID format (pid-12345), extract the number
-    if (cleanId.startsWith('pid-')) {
-      const pidNumber = cleanId.substring(4);
-      // Return last 6 digits
-      return pidNumber.length > 6 ? pidNumber.slice(-6) : pidNumber;
+
+    // claude-proc-17932 -> #17932
+    if (id.startsWith('claude-proc-')) {
+      return id.substring(12);
     }
-    
-    // For other formats, return last 6 characters
-    return cleanId.length > 6 ? cleanId.slice(-6) : cleanId;
+
+    // claude-abcdef123456 (session ID) -> abcdef
+    if (id.startsWith('claude-')) {
+      return id.substring(7, 13);
+    }
+
+    return id.length > 8 ? id.slice(-8) : id;
   }
 
 
@@ -395,6 +393,10 @@ export class AgentMonitorService {
   // Public methods
   getAgents(): Observable<Agent[]> {
     return this.agents$.asObservable();
+  }
+
+  getAgentsSnapshot(): Agent[] {
+    return this.agents$.value;
   }
 
   getTaskQueue(): Observable<TaskQueue> {

@@ -126,18 +126,23 @@ export class LogViewerComponent implements OnInit, AfterViewChecked {
   }
 
   getFormattedAgentId(id: string): string {
-    return this.agentService.getFormattedAgentId(id);
+    return this.agentService.getFormattedAgentId(id).toUpperCase();
+  }
+
+  getAgentName(agentId: string): string {
+    const agents = this.agentService.getAgentsSnapshot();
+    const agent = agents.find(a => a.id === agentId);
+    return agent?.name || '';
   }
 
   getAgentColor(agentId: string): string {
-    if (!agentId) return '#E53E3E'; // Default color
-    return this.agentService.getAgentColor(agentId);
+    if (!agentId) return '#E53E3E';
+    return this.agentService.getAgentColor(agentId) || '#E53E3E';
   }
 
   getLogBackgroundColor(agentId: string): string {
-    if (!agentId) return 'rgba(229, 62, 62, 0.08)'; // Default background
-    const color = this.agentService.getAgentColor(agentId);
-    // Convert hex to rgba with 8% opacity for more visible log highlighting
+    const color = this.getAgentColor(agentId);
+    if (!color || color.length < 7) return 'rgba(229, 62, 62, 0.08)';
     const r = parseInt(color.slice(1, 3), 16);
     const g = parseInt(color.slice(3, 5), 16);
     const b = parseInt(color.slice(5, 7), 16);

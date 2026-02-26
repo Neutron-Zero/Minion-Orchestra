@@ -27,7 +27,6 @@ import { ChartsComponent } from './charts/charts.component';
 import { SettingsComponent } from './settings/settings.component';
 import { OverviewComponent } from './overview/overview.component';
 import { LogsComponent } from './logs/logs.component';
-import { SetupGuideComponent } from './setup-guide/setup-guide.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { SettingsPageComponent } from './settings-page/settings-page.component';
 import { AgentCardComponent } from './agent-card/agent-card.component';
@@ -41,7 +40,6 @@ import { AgentCardComponent } from './agent-card/agent-card.component';
     SettingsComponent,
     OverviewComponent,
     LogsComponent,
-    SetupGuideComponent,
     AnalyticsComponent,
     SettingsPageComponent,
     AgentCardComponent

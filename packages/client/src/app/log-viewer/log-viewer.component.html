@@ -53,6 +53,7 @@
       <mat-icon class="log-icon">{{ getLogIcon(log.level) }}</mat-icon>
       <span class="log-timestamp">{{ formatTimestamp(log.timestamp) }}</span>
       <span class="log-agent" [style.color]="getAgentColor(log.agentId)">{{ getFormattedAgentId(log.agentId) }}</span>
+      <span class="log-agent-name" *ngIf="getAgentName(log.agentId)">{{ getAgentName(log.agentId) }}</span>
       <span class="log-message">{{ log.message }}</span>
     </div>
   </div>

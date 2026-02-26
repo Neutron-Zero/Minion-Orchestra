@@ -13,7 +13,6 @@ from datetime import datetime
 # Configuration
 MINION_ORCHESTRA_URL = os.environ.get('MINION_ORCHESTRA_URL', 'http://localhost:3000')
 HOOK_ENDPOINT = f"{MINION_ORCHESTRA_URL}/api/hook"
-TASK_ENDPOINT = f"{MINION_ORCHESTRA_URL}/api/task"
 
 # Log directory: <script_dir>/../packages/server/logs/
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -63,17 +62,13 @@ def main():
     # Extract event information
     event_type = event_data.get('hook_event_name', 'Unknown')
 
-    # Get agent information from environment or event data
-    agent_id = f"claude-pid-{os.getpid()}"
+    # Use parent PID as stable agent identifier -- matches the scan-registered ID
+    agent_id = f"claude-proc-{os.getppid()}"
+
     if 'cwd' in event_data:
         agent_name = os.path.basename(event_data['cwd']) or 'Claude Agent'
     else:
         agent_name = os.uname().nodename
-
-    # Add prompt preview for UserPromptSubmit
-    if event_type == 'UserPromptSubmit' and 'prompt' in event_data:
-        prompt_preview = event_data['prompt'][:50] + '...' if len(event_data['prompt']) > 50 else event_data['prompt']
-        agent_name = f"{agent_name}: {prompt_preview}"
 
     # Prepare the payload
     payload = {
@@ -81,20 +76,12 @@ def main():
         'agentId': agent_id,
         'agentName': agent_name,
         'timestamp': datetime.now().isoformat(),
+        'pid': os.getppid(),
         'data': event_data
     }
 
     # Send to hook endpoint
     send_to_minion_orchestra(HOOK_ENDPOINT, payload)
-
-    # For UserPromptSubmit, also send to task endpoint
-    if event_type == 'UserPromptSubmit':
-        task_payload = {
-            'prompt': event_data.get('prompt', ''),
-            'sessionId': event_data.get('session_id', ''),
-            'timestamp': datetime.now().isoformat()
-        }
-        send_to_minion_orchestra(TASK_ENDPOINT, task_payload)
 
     # Always pass through
     json.dump({}, sys.stdout)
