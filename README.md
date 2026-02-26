@@ -1,5 +1,7 @@
 # Minion Orchestra
 
+**[minionorchestra.com](https://minionorchestra.com)**
+
 Real-time monitoring dashboard for Claude Code agents with automatic activity tracking via hooks.
 
 ## Features
@@ -100,3 +102,7 @@ Edit `~/.claude/settings.json` and remove entries containing `minion_orchestra_h
 | `npm run setup` | Configure Claude Code hooks |
 | `npm run dev` | Development mode with hot reload |
 | `npm test` | Run client tests |
+
+---
+
+Built by [Neutron Zero](https://neutronzero.com) | [Website](https://minionorchestra.com) | [Report an Issue](https://github.com/Neutron-Zero/MinionOrchestra/issues)
