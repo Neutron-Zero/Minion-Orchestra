@@ -4,17 +4,23 @@ warnings.filterwarnings("ignore")
 import logging
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
+import os
 from contextlib import asynccontextmanager
 
 import socketio
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from config import config
 from routes import router
 from services import agent_manager, task_queue, CleanupService, scan_claude_processes
 from websocket_handlers import register_handlers
+
+# Path to the pre-built Angular client
+CLIENT_DIST = os.path.join(os.path.dirname(__file__), "..", "client", "dist", "minion-orchestra")
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*", logger=False, engineio_logger=False)
 
@@ -52,7 +58,7 @@ async def lifespan(app):
     out(f"{w}  {b}Server v{VERSION}{r}")
     out(f"{d}  -----------------------------------------------{r}")
     out()
-    out(f"  {p}>{r} Dashboard    {w}http://localhost:4201{r}")
+    out(f"  {p}>{r} Dashboard    {w}http://localhost:{port}{r}")
     out()
     out(f"{d}  -----------------------------------------------{r}")
     found = scan_claude_processes(agent_manager)
@@ -68,6 +74,8 @@ async def lifespan(app):
 
 app = FastAPI(title="Minion Command Server", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# API routes first (take priority over static files)
 app.include_router(router)
 
 app.state.sio = sio
@@ -76,6 +84,18 @@ app.state.task_queue = task_queue
 app.state.cleanup_service = cleanup_service
 
 register_handlers(sio, agent_manager, task_queue)
+
+# Serve the pre-built Angular client
+if os.path.isdir(CLIENT_DIST):
+    # Catch-all for Angular client-side routing (any path that isn't an API route or static file)
+    @app.get("/{path:path}")
+    async def serve_angular(path: str):
+        # If the path matches a real file in dist, serve it
+        file_path = os.path.join(CLIENT_DIST, path)
+        if path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        # Otherwise return index.html for Angular's router to handle
+        return FileResponse(os.path.join(CLIENT_DIST, "index.html"))
 
 combined = socketio.ASGIApp(sio, other_asgi_app=app)
 

@@ -5,20 +5,15 @@
     "setup": "python3 setup.py",
     "postinstall": "python3 setup.py",
     "uninstall": "python3 uninstall.py",
-    "dev": "concurrently --names server,client --hide client --raw \"npm run dev:server\" \"npm run dev:client\"",
+    "start": "packages/server/start.sh",
+    "start:debug": "DEBUG=true packages/server/start.sh",
+    "dev": "concurrently --names server,client --raw \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "packages/server/start.sh",
     "dev:client": "cd packages/client && npm run start:ui",
-    "build": "npm run build:client",
-    "build:client": "cd packages/client && npm run build",
-    "build:standalone": "cd packages/client && npm run build:standalone",
-    "start": "concurrently --names server,client --hide client --raw \"npm run start:server\" \"npm run start:client\"",
-    "start:debug": "DEBUG=true npm run start:server",
-    "start:server": "packages/server/start.sh",
-    "start:client": "cd packages/client && npm run start:ui",
+    "build": "cd packages/client && ng build --configuration production",
     "install:all": "cd packages/client && npm install && pip3 install fastapi uvicorn[standard] python-socketio psutil aiofiles",
-    "clean": "rm -rf node_modules packages/*/node_modules",
-    "test": "npm run test:client",
-    "test:client": "cd packages/client && npm test"
+    "clean": "rm -rf node_modules packages/*/node_modules packages/client/dist",
+    "test": "cd packages/client && npm test"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
