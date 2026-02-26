@@ -118,7 +118,7 @@ export class AgentMonitorService {
   }
 
   private connectWebSocket(): void {
-    console.log('Connecting to Minion Command server...');
+    console.log('Connecting to Minion Orchestra server...');
     
     // Only create subscription once
     if (!this.wsSubscription) {
@@ -161,16 +161,16 @@ export class AgentMonitorService {
     // Monitor connection status and retry if needed
     this.websocket.isConnected$.subscribe(connected => {
       if (connected) {
-        console.log('Connected to Minion Command server');
+        console.log('Connected to Minion Orchestra server');
         // Send config when we connect (only if not already sent)
         if (!this.configSent) {
           this.sendInitialConfig();
         }
       } else {
-        console.log('Disconnected from Minion Command server');
+        console.log('Disconnected from Minion Orchestra server');
         // Retry connection after 5 seconds
         setTimeout(() => {
-          console.log('Retrying connection to Minion Command server...');
+          console.log('Retrying connection to Minion Orchestra server...');
           this.connectWebSocket();
         }, 5000);
       }
@@ -477,7 +477,7 @@ export class AgentMonitorService {
       '#E53E3E', // Bright Red
       '#38A169', // Forest Green  
       '#3182CE', // Royal Blue
-      '#FF8C00', // Dark Orange
+      '#7c3aed', // Purple
       '#8A2BE2', // Blue Violet
       '#00CED1', // Dark Turquoise
       '#DC143C', // Crimson

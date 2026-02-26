@@ -32,7 +32,7 @@ export class AnalyticsComponent implements OnInit {
       case 'working': return '#4caf50';
       case 'completed': return '#2196f3';
       case 'failed': return '#f44336';
-      case 'paused': return '#ff9800';
+      case 'paused': return '#a78bfa';
       default: return '#9e9e9e';
     }
   }
@@ -91,7 +91,7 @@ export class AnalyticsComponent implements OnInit {
       '#E53E3E', // Bright Red
       '#38A169', // Forest Green  
       '#3182CE', // Royal Blue
-      '#FF8C00', // Dark Orange
+      '#7c3aed', // Purple
       '#8A2BE2', // Blue Violet
       '#00CED1', // Dark Turquoise
       '#DC143C', // Crimson

@@ -1,5 +1,5 @@
 /**
- * Minion Command Server - Refactored Version
+ * Minion Orchestra Server
  * Main server entry point with modular architecture
  */
 
@@ -91,9 +91,10 @@ server.listen(PORT, () => {
     console.log(`
 ${orange}╔══════════════════════════════════════════════════════╗${reset}
 ${orange}║${reset}                                                      ${orange}║${reset}
-${orange}║${reset}      * Minion Command Server Started!                ${orange}║${reset}
+${orange}║${reset}      Minion Orchestra Server Started!                 ${orange}║${reset}
 ${orange}║${reset}                                                      ${orange}║${reset}
-${orange}║${reset}      WebSocket: http://localhost:${PORT}                ${orange}║${reset}
+${orange}║${reset}      Dashboard:    http://localhost:4201              ${orange}║${reset}
+${orange}║${reset}      API/WS:       http://localhost:${PORT}              ${orange}║${reset}
 ${orange}║${reset}      Health Check: http://localhost:${PORT}/health      ${orange}║${reset}
 ${orange}║${reset}                                                      ${orange}║${reset}
 ${orange}║${reset}      Waiting for minions to connect...               ${orange}║${reset}

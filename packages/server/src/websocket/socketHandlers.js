@@ -146,7 +146,7 @@ function initializeSocketHandlers(io) {
       }
     });
 
-    // Control commands from Minion Command
+    // Control commands from Minion Orchestra
     socket.on('pause_agent', (data) => {
       const { agent, socketId } = agentManager.findAgentById(data.id);
       if (agent && socketId) {

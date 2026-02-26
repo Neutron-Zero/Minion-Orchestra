@@ -42,11 +42,11 @@
     gap: 12px;
     flex: 1;
 
-    .large-icon {
-      font-size: 36px;
+    .header-logo {
       width: 36px;
       height: 36px;
-      color: #ff5722;
+      border-radius: 8px;
+      object-fit: cover;
     }
 
     .large-title {
@@ -161,7 +161,7 @@
         transform: translateX(-50%);
         width: 0;
         height: 1px;
-        background: #ff5722;
+        background: #7c3aed;
         opacity: 0.5;
         transition: width 0.3s ease;
         animation: pulse-glow 2s infinite;
@@ -183,11 +183,11 @@
     bottom: 0;
     left: 0;
     height: 3px;
-    background: #ff5722;
+    background: #7c3aed;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1;
     border-radius: 1.5px 1.5px 0 0;
-    box-shadow: 0 0 8px rgba(255, 87, 34, 0.3);
+    box-shadow: 0 0 8px rgba(124, 58, 237, 0.3);
 
     // Add a subtle glow effect
     &::before {
@@ -200,7 +200,7 @@
       background: linear-gradient(
         90deg,
         transparent 0%,
-        rgba(255, 87, 34, 0.8) 50%,
+        rgba(124, 58, 237, 0.8) 50%,
         transparent 100%
       );
       border-radius: 1px;
@@ -215,7 +215,7 @@
     transition: all 0.3s ease;
 
     &:hover {
-      color: #ff5722;
+      color: #7c3aed;
       transform: scale(1.1) rotate(15deg);
     }
 
@@ -224,7 +224,7 @@
     }
 
     &.active {
-      color: #ff5722;
+      color: #7c3aed;
       transform: rotate(90deg);
     }
   }

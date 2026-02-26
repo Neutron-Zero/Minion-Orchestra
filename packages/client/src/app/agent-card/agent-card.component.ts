@@ -29,7 +29,7 @@ export class AgentCardComponent {
       case 'working': return '#4caf50';
       case 'completed': return '#2196f3';
       case 'failed': return '#f44336';
-      case 'paused': return '#ff9800';
+      case 'paused': return '#a78bfa';
       case 'idle': return '#6366f1';
       case 'awaiting-permission': return '#ffc107';
       case 'permission-requested': return '#ffc107';

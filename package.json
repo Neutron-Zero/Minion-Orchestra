@@ -2,8 +2,9 @@
   "name": "minion-orchestra",
   "private": true,
   "scripts": {
-    "setup": "node setup.js",
-    "postinstall": "node setup.js",
+    "setup": "python3 setup.py",
+    "postinstall": "python3 setup.py",
+    "uninstall": "python3 uninstall.py",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "cd packages/server && npm start",
     "dev:client": "cd packages/client && npm run start:ui",

@@ -69,16 +69,19 @@ packages/
 
 The setup script (`npm run setup`) configures Claude Code hooks:
 
-1. Creates a Python hook script that forwards events to the server
-2. Adds hook entries to `~/.claude/settings.json` for these events:
-   - SessionStart, Stop
+1. Points `~/.claude/settings.json` hook entries to the script at `hooks/minion_orchestra_hook.py` in this project
+2. Registers these 17 Claude Code hook events:
+   - SessionStart, SessionEnd, Stop
    - UserPromptSubmit
-   - PreToolUse, PostToolUse
+   - PreToolUse, PostToolUse, PostToolUseFailure
+   - PermissionRequest
    - SubagentStart, SubagentStop
-   - Notification
-   - PreCompact, PostCompact
-   - ContextTruncation
+   - TeammateIdle, TaskCompleted
+   - Notification, ConfigChange
+   - PreCompact
+   - WorktreeCreate, WorktreeRemove
 3. Preserves any existing hooks you have configured
+4. Cleans up stale files from previous installations
 
 ### Manual Setup
 
@@ -90,7 +93,9 @@ MINION_ORCHESTRA_URL=http://host:3000 npm run setup  # Custom server
 
 ### Removing Hooks
 
-Edit `~/.claude/settings.json` and remove entries containing `minion_orchestra_hook.py`.
+```bash
+npm run uninstall
+```
 
 ## Scripts
 

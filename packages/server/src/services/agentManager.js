@@ -160,7 +160,7 @@ class AgentManager {
     agent.lastActivity = new Date();
 
     // Clear current task and tool when agent goes idle
-    if (status === 'idle') {
+    if (status === 'idle' || status === 'offline') {
       agent.currentTask = undefined;
       agent.currentTool = undefined;
     }

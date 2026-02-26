@@ -246,26 +246,6 @@ router.post('/hook', (req, res) => {
                 });
                 break;
                 
-            case 'PostCompact':
-                // Context compaction completed
-                io.emit('log', {
-                    timestamp: new Date(timestamp),
-                    level: 'debug',
-                    message: `📦 Context compacted`,
-                    agentId: agentId
-                });
-                break;
-                
-            case 'ContextTruncation':
-                // Context was truncated
-                io.emit('log', {
-                    timestamp: new Date(timestamp),
-                    level: 'warning',
-                    message: `✂️ Context truncated - conversation too long`,
-                    agentId: agentId
-                });
-                break;
-                
             case 'Notification':
                 // General notification
                 const notificationMsg = data?.message || 'Notification';
@@ -298,6 +278,131 @@ router.post('/hook', (req, res) => {
                 });
                 break;
                 
+            case 'PermissionRequest':
+                // Permission dialog triggered
+                const permToolName = data?.tool_name || 'Unknown';
+                agent.status = 'waiting';
+
+                io.emit('log', {
+                    timestamp: new Date(timestamp),
+                    level: 'warning',
+                    message: `⏳ Permission requested for ${permToolName}`,
+                    agentId: agentId
+                });
+                break;
+
+            case 'PostToolUseFailure':
+                // Tool call failed
+                const failedTool = data?.tool_name || 'Unknown';
+                const failError = data?.error || 'Unknown error';
+                const isInterrupt = data?.is_interrupt || false;
+                agentManager.clearAgentTool(agentId);
+
+                if (taskQueue.getQueue().inProgress > 0 && isInterrupt) {
+                    taskQueue.decrement('inProgress');
+                    taskQueue.increment('failed');
+                }
+
+                io.emit('log', {
+                    timestamp: new Date(timestamp),
+                    level: 'error',
+                    message: `❌ ${failedTool} failed: ${failError}${isInterrupt ? ' (interrupted)' : ''}`,
+                    agentId: agentId
+                });
+                break;
+
+            case 'SessionEnd':
+                // Session terminated
+                const endReason = data?.reason || 'unknown';
+                agent.status = 'offline';
+                agent.currentTask = undefined;
+                agent.currentTool = undefined;
+
+                if (taskQueue.getQueue().inProgress > 0) {
+                    taskQueue.decrement('inProgress');
+                }
+
+                io.emit('log', {
+                    timestamp: new Date(timestamp),
+                    level: 'info',
+                    message: `🔌 Session ended (${endReason})`,
+                    agentId: agentId
+                });
+
+                // Remove agent after delay since session is fully over
+                setTimeout(() => {
+                    agentManager.removeAgentById(agentId);
+                    broadcastAgentUpdate(io);
+                }, 10000);
+                break;
+
+            case 'TeammateIdle':
+                // Agent teammate going idle
+                const teammateName = data?.teammate_name || 'Unknown';
+                const teamName = data?.team_name || '';
+
+                io.emit('log', {
+                    timestamp: new Date(timestamp),
+                    level: 'info',
+                    message: `💤 Teammate idle: ${teammateName}${teamName ? ` (${teamName})` : ''}`,
+                    agentId: agentId
+                });
+                break;
+
+            case 'TaskCompleted':
+                // Task marked complete
+                const taskSubject = data?.task_subject || 'Unknown task';
+
+                taskQueue.increment('completed');
+                if (taskQueue.getQueue().inProgress > 0) {
+                    taskQueue.decrement('inProgress');
+                }
+
+                io.emit('log', {
+                    timestamp: new Date(timestamp),
+                    level: 'info',
+                    message: `✅ Task completed: ${taskSubject}`,
+                    agentId: agentId
+                });
+                break;
+
+            case 'ConfigChange':
+                // Configuration file changed
+                const configSource = data?.source || 'unknown';
+                const configFilePath = data?.file_path || '';
+
+                io.emit('log', {
+                    timestamp: new Date(timestamp),
+                    level: 'debug',
+                    message: `⚙️ Config changed: ${configSource}${configFilePath ? ` (${configFilePath})` : ''}`,
+                    agentId: agentId
+                });
+                break;
+
+            case 'WorktreeCreate':
+                // Git worktree created
+                const wtName = data?.name || 'unnamed';
+
+                io.emit('log', {
+                    timestamp: new Date(timestamp),
+                    level: 'info',
+                    message: `🌿 Worktree created: ${wtName}`,
+                    agentId: agentId
+                });
+                break;
+
+            case 'WorktreeRemove':
+                // Git worktree removed
+                const removedWtPath = data?.worktree_path || 'unknown';
+
+                io.emit('log', {
+                    timestamp: new Date(timestamp),
+                    level: 'info',
+                    message: `🗑️ Worktree removed: ${removedWtPath}`,
+                    agentId: agentId
+                });
+                break;
+
             default:
                 // Unknown event type - log it anyway
                 io.emit('log', {
