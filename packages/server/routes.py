@@ -113,14 +113,18 @@ async def _handle_pre_tool_use(agent, socket_id, event, sio):
             agent_manager.set_agent(socket_id, agent)
             await sio.emit("log", _log(event.timestamp, "info", active_form, event.agentId))
 
-    # Build message with file path context when available
-    msg = tool_description if tool_description else f"Using {tool_name}"
-    if isinstance(tool_input, dict):
+    # Build message: always start with tool name
+    if tool_description:
+        msg = f"{tool_name}: {tool_description}"
+    elif isinstance(tool_input, dict):
         file_path = tool_input.get("file_path") or tool_input.get("path") or tool_input.get("command")
-        if file_path and not tool_description:
-            # Shorten to just the filename for readability
+        if file_path:
             short = file_path.split("/")[-1] if "/" in str(file_path) else str(file_path)
             msg = f"{tool_name}: {short}"
+        else:
+            msg = f"Using {tool_name}"
+    else:
+        msg = f"Using {tool_name}"
     await sio.emit("log", _log(event.timestamp, "info", msg, event.agentId))
 
 
