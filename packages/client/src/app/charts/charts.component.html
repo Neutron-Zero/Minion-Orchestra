@@ -1,19 +1,20 @@
 <div class="charts-grid">
-  <mat-card>
-    <mat-card-content>
-      <canvas #activityCanvas></canvas>
-    </mat-card-content>
-  </mat-card>
-
-  <mat-card>
-    <mat-card-content>
-      <canvas #pulseCanvas></canvas>
-    </mat-card-content>
-  </mat-card>
-
-  <mat-card>
-    <mat-card-content>
-      <canvas #performanceCanvas></canvas>
-    </mat-card-content>
-  </mat-card>
+  <div class="panel chart-panel">
+    <div class="panel-header">
+      <span class="panel-title">ACTIVITY OVER TIME</span>
+    </div>
+    <canvas #activityCanvas></canvas>
+  </div>
+  <div class="panel chart-panel">
+    <div class="panel-header">
+      <span class="panel-title">ACTIVITY PULSE</span>
+    </div>
+    <canvas #pulseCanvas></canvas>
+  </div>
+  <div class="panel chart-panel">
+    <div class="panel-header">
+      <span class="panel-title">AGENT STATUS</span>
+    </div>
+    <canvas #performanceCanvas></canvas>
+  </div>
 </div>

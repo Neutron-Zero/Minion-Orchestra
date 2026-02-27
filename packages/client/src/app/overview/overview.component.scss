@@ -3,7 +3,6 @@
   display: flex;
   gap: 20px;
   margin-top: 20px;
-  // Calculate height: viewport - header(80px) - nav(40px) - footer(40px) - content padding(40px) - charts(~280px) - margin-top(20px)
   height: calc(100vh - 480px);
   min-height: 400px;
 }
@@ -14,7 +13,7 @@
   width: 50%;
   display: flex;
   flex-direction: column;
-  
+
   h3 {
     margin: 0 0 16px 0;
     color: #f1f5f9;
@@ -24,58 +23,43 @@
 }
 
 .column-left {
-  overflow-y: auto;
-  padding-right: 10px;
+  overflow: hidden;
 }
 
 .column-right {
   overflow: hidden;
-  
-  .log-container {
-    flex: 1;
-    overflow: hidden;
+
+  app-log-viewer {
+    height: 100%;
     display: flex;
     flex-direction: column;
-    height: calc(100% - 34px); // Subtract h3 height and margin
-    min-height: calc(100% - 34px);
-    
-    app-log-viewer {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
   }
 }
 
-.agents-header {
+// Agents panel
+.agents-panel {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-right: 10px; // Match the padding-right of the scrollable content
-  
-  h3 {
-    margin: 0;
-  }
-  
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+
   .clear-link {
     color: #ef4444;
-    font-size: 14px;
+    font-size: 13px;
     text-decoration: none;
     cursor: pointer;
     transition: all 0.2s ease;
-    
+
     &:hover {
       text-decoration: underline;
       color: #dc2626;
     }
   }
-}
 
-.agents-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  overflow-y: auto;
-  padding-right: 10px;
+  .agents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+  }
 }

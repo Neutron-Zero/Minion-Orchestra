@@ -1,27 +1,32 @@
-.agents-list {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 32px;
-}
+.panel-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4caf50;
 
-.no-agents {
-  margin-bottom: 32px;
-}
-
-h2 {
-  margin-top: 8px;
-  margin-bottom: 24px;
-}
-
-@media (max-width: 1024px) {
-  .agents-list {
-    grid-template-columns: repeat(2, 1fr);
+  &.idle {
+    color: rgba(255, 255, 255, 0.4);
   }
 }
 
-@media (max-width: 640px) {
-  .agents-list {
-    grid-template-columns: 1fr;
+.agents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 0;
+  color: rgba(255, 255, 255, 0.4);
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    font-size: 14px;
   }
 }

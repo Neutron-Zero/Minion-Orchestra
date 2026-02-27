@@ -101,7 +101,7 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
         },
         plugins: {
           title: {
-            display: true,
+            display: false,
             text: 'Agent Activity Over Time',
             color: '#ffffff',
             font: {
@@ -187,7 +187,7 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
         },
         plugins: {
           title: {
-            display: true,
+            display: false,
             text: 'Activity Pulse - System Heartbeat',
             color: '#ffffff',
             font: {
@@ -239,7 +239,7 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
         backgroundColor: '#000000',
         plugins: {
           title: {
-            display: true,
+            display: false,
             text: 'Agent Status Overview',
             color: '#ffffff',
             font: {

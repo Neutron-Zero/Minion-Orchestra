@@ -474,29 +474,36 @@ export class AgentMonitorService {
     return this.formatAgentId(id);
   }
 
-  getAgentColor(agentId: string): string {
-    const AGENT_COLORS = [
-      '#E53E3E', // Bright Red
-      '#38A169', // Forest Green  
-      '#3182CE', // Royal Blue
-      '#7c3aed', // Purple
-      '#8A2BE2', // Blue Violet
-      '#00CED1', // Dark Turquoise
-      '#DC143C', // Crimson
-      '#228B22', // Forest Green (different shade)
-      '#4169E1', // Royal Blue (different shade)
-      '#FF1493'  // Deep Pink
-    ];
+  private agentColorMap = new Map<string, string>();
+  private usedColorIndex = 0;
+  private readonly AGENT_COLORS = [
+    '#4caf50', // Green
+    '#ffc107', // Yellow
+    '#2196f3', // Blue
+    '#E53E3E', // Red
+    '#7c3aed', // Purple
+    '#00CED1', // Turquoise
+    '#FF1493', // Pink
+    '#38A169', // Forest Green
+    '#4169E1', // Royal Blue
+    '#f44336', // Bright Red
+  ];
 
-    // Handle null/undefined agentId
+  getAgentColor(agentId: string): string {
     if (!agentId || typeof agentId !== 'string' || agentId.length === 0) {
-      return AGENT_COLORS[0]; // Return first color as default
+      return this.AGENT_COLORS[0];
     }
 
-    // Simple modulo based on agent ID - just use the last few characters
-    const lastChars = agentId.slice(-4); // Get last 4 characters
-    const numValue = parseInt(lastChars, 36) || 0; // Base 36 to handle letters too
-    return AGENT_COLORS[numValue % AGENT_COLORS.length];
+    // Return cached color if already assigned
+    if (this.agentColorMap.has(agentId)) {
+      return this.agentColorMap.get(agentId)!;
+    }
+
+    // Assign next unused color
+    const color = this.AGENT_COLORS[this.usedColorIndex % this.AGENT_COLORS.length];
+    this.usedColorIndex++;
+    this.agentColorMap.set(agentId, color);
+    return color;
   }
 
   setDebugMode(enabled: boolean): void {

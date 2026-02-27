@@ -9,9 +9,15 @@ import { Observable } from 'rxjs';
 })
 export class AnalyticsComponent implements OnInit {
   agents$: Observable<Agent[]>;
+  workingCount = 0;
+  agentCount = 0;
 
   constructor(private agentService: AgentMonitorService) {
     this.agents$ = this.agentService.getAgents();
+    this.agents$.subscribe(agents => {
+      this.agentCount = agents.length;
+      this.workingCount = agents.filter(a => a.status === 'working').length;
+    });
   }
 
   ngOnInit(): void {

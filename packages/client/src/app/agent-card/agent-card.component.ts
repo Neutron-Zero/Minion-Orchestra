@@ -31,9 +31,10 @@ export class AgentCardComponent {
       case 'failed': return '#f44336';
       case 'paused': return '#a78bfa';
       case 'idle': return '#6366f1';
+      case 'waiting': return '#ffc107';
       case 'awaiting-permission': return '#ffc107';
       case 'permission-requested': return '#ffc107';
-      default: return '#9e9e9e';
+      default: return '#6e7681';
     }
   }
 
@@ -74,21 +75,21 @@ export class AgentCardComponent {
 
   getSessionDuration(agent: any): string {
     if (!agent.startTime) return '';
-    
+
     const now = new Date();
     const start = new Date(agent.startTime);
     const diff = now.getTime() - start.getTime();
-    
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(minutes / 60);
-    
+
+    const totalSeconds = Math.floor(diff / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+
     if (hours > 0) {
-      return `${hours}h ${minutes % 60}m`;
-    } else if (minutes > 0) {
-      return `${minutes}m`;
-    } else {
-      return '<1m';
+      return `${hours}h ${pad(minutes)}m`;
     }
+    return `${minutes}m ${pad(seconds)}s`;
   }
 
   getEnhancedStatusMessage(agent: any): string {

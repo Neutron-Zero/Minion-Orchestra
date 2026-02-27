@@ -1,39 +1,25 @@
-<div class="agent-card-compact" 
-     [class.awaiting-permission]="agent.status === 'awaiting-permission' || agent.status === 'permission-requested'"
-     [style.borderLeftColor]="getAgentColor(agent.id)" 
-     [style.borderRightColor]="getAgentColor(agent.id)" 
-     [style.backgroundColor]="getAgentBackgroundColor(agent.id)">
-  
-  <div class="agent-avatar-container">
-    <div class="agent-avatar" [class]="getActivityIndicatorClass(agent)">
-      <mat-icon [style.color]="getStatusColor(agent.status)">
-        {{ getStatusIcon(agent.status) }}
-      </mat-icon>
+<div class="agent-row"
+     [class.awaiting-permission]="agent.status === 'awaiting-permission' || agent.status === 'permission-requested'">
+
+  <div class="status-dot" [style.backgroundColor]="getAgentColor(agent.id)"></div>
+
+  <div class="agent-content">
+    <div class="content-top">
+      <div class="agent-name-group">
+        <span class="agent-id">agent-{{ getFormattedAgentId(agent.id) }}</span>
+        <span class="agent-folder" *ngIf="getFolderName(agent)">{{ getFolderName(agent) }}</span>
+      </div>
+      <span class="duration" *ngIf="getSessionDuration(agent) && agent.status !== 'completed'">{{ getSessionDuration(agent) }}</span>
+      <span class="status-label" *ngIf="agent.status === 'completed'">Done</span>
     </div>
-    <div class="agent-pid">{{ getFormattedAgentId(agent.id) }}</div>
-  </div>
-  
-  <div class="agent-info">
-    <div class="agent-header">
-      <span class="agent-duration" *ngIf="getSessionDuration(agent)">{{ getSessionDuration(agent) }}</span>
-      <mat-chip [style.background]="getStatusColor(agent.status)" class="status-chip">
-        {{ agent.status | uppercase }}
-      </mat-chip>
-      <span class="folder-name" *ngIf="getFolderName(agent)">{{ getFolderName(agent) }}</span>
-      <span class="current-tool" *ngIf="agent.status === 'working' && (agent.currentToolDescription || agent.currentTool)">
-        {{ agent.currentToolDescription || ('Using ' + agent.currentTool) }}
+    <div class="content-bottom">
+      <span class="task-text">
+        {{ agent.currentTask || (agent.status === 'idle' ? 'Idle -- waiting for context' : agent.status) }}
       </span>
+      <div class="tools">
+        <span class="tool-pill" *ngFor="let tool of agent.recentTools?.slice(-2)">{{ tool }}</span>
+      </div>
     </div>
-    
-    <div class="agent-task current-task" *ngIf="agent.currentTask">
-      {{ agent.currentTask }}
-    </div>
-    
-    <div class="agent-task idle-status" *ngIf="!agent.currentTask && agent.status === 'idle'">
-      Waiting for input...
-    </div>
-    
-    
   </div>
-  
+
 </div>

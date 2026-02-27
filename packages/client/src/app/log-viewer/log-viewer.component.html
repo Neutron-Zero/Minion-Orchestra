@@ -1,60 +1,32 @@
-<div class="log-viewer">
-  <div class="log-controls">
-    <h3>{{ filteredLogs.length }}</h3>
-    <div class="controls">
-      <!-- Search Input -->
-      <input matInput 
-             placeholder="Search logs..." 
-             [(ngModel)]="searchTerm"
-             (input)="onSearchChange(searchTerm)"
-             class="search-input">
-      
-      <!-- Level Filter -->
-      <mat-select [(value)]="levelFilter" (selectionChange)="onLevelFilterChange(levelFilter)" class="level-filter">
-        <mat-option value="all">All Levels</mat-option>
-        <mat-option value="info">Info</mat-option>
-        <mat-option value="warning">Warning</mat-option>
-        <mat-option value="error">Error</mat-option>
-        <mat-option value="debug">Debug</mat-option>
-      </mat-select>
-      
-      <!-- Export Button -->
-      <button mat-icon-button (click)="showExportOptions = !showExportOptions" matTooltip="Export">
-        <mat-icon>download</mat-icon>
-      </button>
-      
-      <!-- Clear Logs -->
-      <button mat-icon-button (click)="clearLogs()" matTooltip="Clear all logs">
-        <mat-icon>clear</mat-icon>
-      </button>
-      
-      <!-- Auto-scroll -->
-      <button mat-icon-button 
-              [color]="autoScroll ? 'primary' : ''" 
-              (click)="toggleAutoScroll()"
-              matTooltip="Auto-scroll">
-        <mat-icon>{{ autoScroll ? 'vertical_align_bottom' : 'pan_tool' }}</mat-icon>
-      </button>
+<div class="log-viewer panel">
+  <div class="panel-header">
+    <span class="panel-title">LIVE ACTIVITY FEED</span>
+    <div class="header-right">
+      <div class="controls">
+        <input matInput
+               placeholder="Search..."
+               [(ngModel)]="searchTerm"
+               (input)="onSearchChange(searchTerm)"
+               class="search-input">
+        <button mat-icon-button (click)="clearLogs()" matTooltip="Clear" class="control-btn">
+          <mat-icon>clear</mat-icon>
+        </button>
+      </div>
+      <div class="live-indicator" [class.connected]="isConnected">
+        <span class="live-dot"></span>
+        <span class="live-text">{{ isConnected ? 'Live' : 'Offline' }}</span>
+      </div>
     </div>
   </div>
-  
-  <!-- Export Options -->
-  <div class="export-options" *ngIf="showExportOptions">
-    <button mat-button (click)="exportLogs('json')">Export as JSON</button>
-    <button mat-button (click)="exportLogs('csv')">Export as CSV</button>
-  </div>
-  
-  <div class="log-container" #scrollContainer [style.height]="maxHeight">
-    <div *ngFor="let log of filteredLogs" 
-         class="log-entry" 
-         [ngClass]="getLogClass(log.level)"
-         [style.backgroundColor]="getLogBackgroundColor(log.agentId)"
+
+  <div class="log-container" #scrollContainer>
+    <div *ngFor="let log of filteredLogs"
+         class="log-entry"
          [style.borderLeftColor]="getAgentColor(log.agentId)">
-      <mat-icon class="log-icon">{{ getLogIcon(log.level) }}</mat-icon>
       <span class="log-timestamp">{{ formatTimestamp(log.timestamp) }}</span>
-      <span class="log-agent" [style.color]="getAgentColor(log.agentId)">{{ getFormattedAgentId(log.agentId) }}</span>
-      <span class="log-agent-name" *ngIf="getAgentName(log.agentId)">{{ getAgentName(log.agentId) }}</span>
-      <span class="log-message">{{ log.message }}</span>
+      <span class="log-agent">agent-{{ getFormattedAgentId(log.agentId) }}</span>
+      <span class="log-folder" *ngIf="getAgentName(log.agentId)">{{ getAgentName(log.agentId) }}</span>
+      <span class="log-message" [class]="getToolClass(log.message)">{{ log.message }}</span>
     </div>
   </div>
 </div>

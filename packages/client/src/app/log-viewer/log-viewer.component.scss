@@ -1,195 +1,141 @@
 .log-viewer {
-  background: rgb(60,68,71);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  overflow: hidden;
-  font-family: 'Consolas', 'Monaco', monospace;
   height: 100%;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
 
-  .log-controls {
+.panel-header {
+  margin-bottom: 20px;
+  flex-shrink: 0;
+
+  .header-right {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 8px 16px;
-    background: rgba(23,29,33,0.8);
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    flex-shrink: 0;
-
-    h3 {
-      margin: 0;
-      color: #ffffff;
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .controls {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-
-      .search-input {
-        background: rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 4px;
-        padding: 4px 8px;
-        color: #ffffff;
-        font-size: 13px;
-        width: 200px;
-        
-        &::placeholder {
-          color: rgba(255,255,255,0.5);
-        }
-      }
-      
-      .level-filter {
-        background: rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 4px;
-        padding: 4px 8px;
-        color: #ffffff;
-        font-size: 13px;
-        min-width: 120px;
-      }
-
-      button {
-        color: #ffffff;
-      }
-    }
+    gap: 16px;
   }
 
-  .log-container {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: auto;
-    padding: 8px 24px 8px 8px;
-    background: rgba(23,29,33,0.4);
-    width: 100%;
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
 
-    .log-entry {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .search-input {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      color: #ffffff;
       padding: 4px 8px;
-      font-size: 13px;
-      line-height: 1.4;
-      border-radius: 2px;
-      border-left: 6px solid #E53E3E; // Default color, overridden by style binding
-      margin-bottom: 2px;
-      transition: background 0.2s;
-      min-width: max-content;
+      font-size: 12px;
+      width: 100px;
+      outline: none;
 
-      &:hover {
-        background: rgba(55,65,75,0.5);
+      &:focus {
+        border-color: rgba(124, 58, 237, 0.5);
       }
+    }
 
-      .log-icon {
+    .control-btn {
+      color: rgba(255, 255, 255, 0.3);
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+
+      mat-icon {
         font-size: 16px;
         width: 16px;
         height: 16px;
       }
-
-      .log-timestamp {
-        color: #9ca3af;
-        font-size: 11px;
-        min-width: 80px;
-        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-      }
-
-      .log-agent {
-        font-weight: 600;
-        min-width: 60px;
-        color: #60a5fa;
-        font-size: 11px;
-        background: rgba(96, 165, 250, 0.1);
-        border: 1px solid rgba(96, 165, 250, 0.3);
-        border-radius: 4px;
-        padding: 2px 6px;
-      }
-
-      .log-agent-name {
-        color: rgba(255, 255, 255, 0.5);
-        font-size: 10px;
-        margin-right: 4px;
-        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-      }
-
-      .log-message {
-        flex: 1;
-        color: #e5e7eb;
-        white-space: nowrap;
-        overflow: visible;
-        min-width: 0;
-      }
-
-      &.log-info {
-        .log-icon, .log-level {
-          color: #60a5fa;
-        }
-      }
-
-      &.log-warning {
-        .log-icon, .log-level {
-          color: #f59e0b;
-        }
-      }
-
-      &.log-error {
-        .log-icon, .log-level {
-          color: #ef4444;
-        }
-        .log-message {
-          color: #ef4444 !important;
-        }
-        // Background and border color now come from agent color binding
-      }
-
-      &.log-debug {
-        display: none;
-      }
     }
   }
 
-  // Light theme scrollbar
-  .log-container::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  .log-container::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 4px;
-  }
-
-  .log-container::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
-
-    &:hover {
-      background: #94a3b8;
-    }
-  }
-
-  .log-container::-webkit-scrollbar-corner {
-    background: #f1f5f9;
-  }
-  
-  .export-options {
-    background: rgba(23,29,33,0.8);
-    padding: 8px 16px;
-    border-top: 1px solid rgba(255,255,255,0.1);
+  .live-indicator {
     display: flex;
-    gap: 8px;
-    
-    button {
-      color: #ffffff;
-      background: rgba(255,255,255,0.1);
-      
-      &:hover {
-        background: rgba(255,255,255,0.2);
+    align-items: center;
+    gap: 6px;
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6b7280;
+    }
+
+    .live-text {
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.4) !important;
+    }
+
+    &.connected {
+      .live-dot {
+        background: #4caf50;
+        box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
       }
+
+      .live-text {
+        color: #4caf50 !important;
+      }
+    }
+  }
+}
+
+// Show controls on hover
+.log-viewer:hover .controls {
+  opacity: 1;
+}
+
+.log-container {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+
+  .log-entry {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 10px 16px;
+    margin-bottom: 2px;
+    border-left: 3px solid #6366f1;
+    font-size: 14px;
+    line-height: 1.6;
+
+    .log-timestamp {
+      color: #8b949e;
+      flex-shrink: 0;
+    }
+
+    .log-agent {
+      color: #e6edf3;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .log-folder {
+      color: #8b949e;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+
+    .log-text { color: #8b949e; }
+    .tool-msg { font-weight: 500; }
+    .tool-read, .tool-edit { color: #7c3aed; }
+    .tool-write, .tool-bash { color: #38A169; }
+    .tool-glob, .tool-grep { color: #3182CE; }
+    .tool-task { color: #E53E3E; }
+    .tool-webfetch, .tool-websearch { color: #00CED1; }
+    .tool-notebookedit { color: #a78bfa; }
+
+    .log-message {
+      color: #8b949e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 }

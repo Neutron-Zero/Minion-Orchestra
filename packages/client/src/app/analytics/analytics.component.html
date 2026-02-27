@@ -1,22 +1,20 @@
-<div class="agents-list">
-  <app-agent-card 
-    *ngFor="let agent of agents$ | async" 
-    [agent]="agent"
-    (pause)="pauseAgent($event)"
-    (resume)="resumeAgent($event)"
-    (remove)="removeAgent($event)">
-  </app-agent-card>
-</div>
-
-<div *ngIf="(agents$ | async)?.length === 0" class="no-agents">
-  <mat-card>
-    <mat-card-content>
-      <div class="empty-state">
-        <mat-icon class="empty-icon">sentiment_dissatisfied</mat-icon>
-        <h3>No Active Agents</h3>
-        <p>Start a Claude Code session to see agents appear here.</p>
-        <p>Run <code>claude</code> in a terminal or use the CLI tools for monitoring.</p>
-      </div>
-    </mat-card-content>
-  </mat-card>
+<div class="panel agents-panel">
+  <div class="panel-header">
+    <span class="panel-title">ACTIVE AGENTS</span>
+    <span class="panel-count" *ngIf="workingCount > 0">{{ workingCount }} Working</span>
+    <span class="panel-count idle" *ngIf="workingCount === 0">{{ agentCount }} Connected</span>
+  </div>
+  <div class="agents-list">
+    <app-agent-card
+      *ngFor="let agent of agents$ | async"
+      [agent]="agent"
+      (pause)="pauseAgent($event)"
+      (resume)="resumeAgent($event)"
+      (remove)="removeAgent($event)">
+    </app-agent-card>
+  </div>
+  <div *ngIf="(agents$ | async)?.length === 0" class="empty-state">
+    <mat-icon>sentiment_dissatisfied</mat-icon>
+    <p>No active agents. Start a Claude Code session to see agents here.</p>
+  </div>
 </div>
