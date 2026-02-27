@@ -9,7 +9,7 @@
         <span class="agent-id">agent-{{ getFormattedAgentId(agent.id) }}</span>
         <span class="agent-folder" *ngIf="getFolderName(agent)">{{ getFolderName(agent) }}</span>
       </div>
-      <span class="duration" *ngIf="getSessionDuration(agent) && agent.status !== 'completed'">{{ getSessionDuration(agent) }}</span>
+      <span class="duration" *ngIf="duration && agent.status !== 'completed'">{{ duration }}</span>
       <span class="status-label" *ngIf="agent.status === 'completed'">Done</span>
     </div>
     <div class="content-bottom">

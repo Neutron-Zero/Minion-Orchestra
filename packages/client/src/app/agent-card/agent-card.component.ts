@@ -1,18 +1,38 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { Agent, AgentMonitorService } from '../services/agent-monitor.service';
 
 @Component({
   selector: 'app-agent-card',
   templateUrl: './agent-card.component.html',
-  styleUrls: ['./agent-card.component.scss']
+  styleUrls: ['./agent-card.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AgentCardComponent {
+export class AgentCardComponent implements OnInit, OnDestroy {
   @Input() agent!: Agent;
   @Output() pause = new EventEmitter<Agent>();
   @Output() resume = new EventEmitter<Agent>();
   @Output() remove = new EventEmitter<Agent>();
 
-  constructor(private agentService: AgentMonitorService) {}
+  duration = '';
+  private timer: any;
+
+  constructor(private agentService: AgentMonitorService, private cdr: ChangeDetectorRef) {}
+
+  ngOnInit() {
+    this.updateDuration();
+    this.timer = setInterval(() => {
+      this.updateDuration();
+      this.cdr.markForCheck();
+    }, 1000);
+  }
+
+  ngOnDestroy() {
+    if (this.timer) clearInterval(this.timer);
+  }
+
+  private updateDuration() {
+    this.duration = this.getSessionDuration(this.agent);
+  }
 
   // Removed pause/resume - Claude Code agents run independently
 
