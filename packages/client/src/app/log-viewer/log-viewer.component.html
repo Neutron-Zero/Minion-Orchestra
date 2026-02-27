@@ -26,7 +26,8 @@
       <span class="log-timestamp">{{ formatTimestamp(log.timestamp) }}</span>
       <span class="log-agent">agent-{{ getFormattedAgentId(log.agentId) }}</span>
       <span class="log-folder" *ngIf="getAgentName(log.agentId)">{{ getAgentName(log.agentId) }}</span>
-      <span class="log-message" [class]="getToolClass(log.message)">{{ log.message }}</span>
+      <span class="log-message" *ngIf="parseToolMessage(log.message) as parts; else plainMsg">{{ parts.before }}<span [ngClass]="'tool-name tool-' + parts.tool.toLowerCase()">{{ parts.tool }}</span>{{ parts.after }}</span>
+      <ng-template #plainMsg><span class="log-message">{{ log.message }}</span></ng-template>
     </div>
   </div>
 </div>

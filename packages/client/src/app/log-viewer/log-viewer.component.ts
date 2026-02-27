@@ -148,22 +148,17 @@ export class LogViewerComponent implements OnInit, AfterViewChecked {
     return this.agentService.getAgentColor(agentId) || '#E53E3E';
   }
 
-  private toolColors: Record<string, string> = {
-    'Read': '#7c3aed',
-    'Write': '#38A169',
-    'Edit': '#7c3aed',
-    'Bash': '#38A169',
-    'Glob': '#3182CE',
-    'Grep': '#3182CE',
-    'Task': '#E53E3E',
-    'WebFetch': '#00CED1',
-    'WebSearch': '#00CED1',
-  };
+  private toolPattern = /\b(Read|Write|Edit|Bash|Glob|Grep|Task|WebFetch|WebSearch|NotebookEdit)\b/;
 
-  getToolClass(message: string): string {
-    if (!message) return 'log-text';
-    const match = message.match(/\b(Read|Write|Edit|Bash|Glob|Grep|Task|WebFetch|WebSearch|NotebookEdit)\b/);
-    return match ? 'tool-msg tool-' + match[0].toLowerCase() : 'log-text';
+  parseToolMessage(message: string): { before: string; tool: string; after: string } | null {
+    if (!message) return null;
+    const match = message.match(this.toolPattern);
+    if (!match) return null;
+    return {
+      before: message.substring(0, match.index!),
+      tool: match[0],
+      after: message.substring(match.index! + match[0].length)
+    };
   }
 
   getLogBackgroundColor(agentId: string): string {

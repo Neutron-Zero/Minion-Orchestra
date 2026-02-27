@@ -122,20 +122,22 @@
       font-size: 12px;
     }
 
-    .log-text { color: #8b949e; }
-    .tool-msg { font-weight: 500; }
-    .tool-read, .tool-edit { color: #7c3aed; }
-    .tool-write, .tool-bash { color: #38A169; }
-    .tool-glob, .tool-grep { color: #3182CE; }
-    .tool-task { color: #E53E3E; }
-    .tool-webfetch, .tool-websearch { color: #00CED1; }
-    .tool-notebookedit { color: #a78bfa; }
-
     .log-message {
       color: #8b949e;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+
+      .tool-name {
+        font-weight: 600;
+
+        &.tool-read, &.tool-edit { color: #7c3aed; }
+        &.tool-write, &.tool-bash { color: #38A169; }
+        &.tool-glob, &.tool-grep { color: #3182CE; }
+        &.tool-task { color: #E53E3E; }
+        &.tool-webfetch, &.tool-websearch { color: #00CED1; }
+        &.tool-notebookedit { color: #a78bfa; }
+      }
     }
   }
 }
