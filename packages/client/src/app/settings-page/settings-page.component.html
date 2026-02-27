@@ -1,97 +1,193 @@
-<h2>Minion Orchestra Settings</h2>
+<div class="settings-layout">
+  <!-- Section Nav -->
+  <nav class="section-nav">
+    <a *ngFor="let section of sections" [class.active]="activeSection === section.key" (click)="scrollToSection(section.key)">
+      <mat-icon>{{ section.icon }}</mat-icon>
+      {{ section.label }}
+    </a>
+  </nav>
 
-<div class="settings-grid">
-  <mat-card>
-    <mat-card-header>
-      <mat-card-title>Connection Status</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <p>WebSocket Server: 
-        <span class="status-indicator" [class.connected]="connectionStatus$ | async" [class.disconnected]="!(connectionStatus$ | async)">
-          {{ (connectionStatus$ | async) ? 'Connected' : 'Disconnected' }}
-        </span>
-      </p>
-      <p>Server URL: http://localhost:3000</p>
-      <div class="control-row">
-        <mat-slide-toggle [(ngModel)]="autoRetry" (change)="toggleAutoRetry()">
-          Auto-retry connection
-        </mat-slide-toggle>
-      </div>
-      <button mat-raised-button color="primary" (click)="reconnectServer()">
-        <mat-icon>refresh</mat-icon> Reconnect
-      </button>
-    </mat-card-content>
-  </mat-card>
+  <!-- Settings Content -->
+  <div class="settings-content">
+    <h2>Settings</h2>
 
-  <mat-card>
-    <mat-card-header>
-      <mat-card-title>Monitoring Configuration</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <p>Auto-detect Claude processes: Enabled</p>
-      
-      <div class="control-row">
-        <mat-form-field appearance="outline" class="compact-field">
-          <mat-label>Log Retention</mat-label>
-          <input matInput type="number" [(ngModel)]="logRetention" (change)="updateLogRetention()" min="100" max="10000">
-          <span matSuffix>entries</span>
-        </mat-form-field>
-      </div>
-      
-      <div class="control-row">
-        <mat-form-field appearance="outline" class="compact-field">
-          <mat-label>Update Interval</mat-label>
-          <input matInput type="number" [(ngModel)]="updateInterval" (change)="updateUpdateInterval()" min="1000" max="60000">
-          <span matSuffix>ms</span>
-        </mat-form-field>
-      </div>
-      
-      <div class="control-row">
-        <mat-form-field appearance="outline" class="compact-field">
-          <mat-label>Agent Cleanup Interval</mat-label>
-          <input matInput type="number" [(ngModel)]="cleanupInterval" (change)="updateCleanupInterval()" min="1000" max="300000">
-          <span matSuffix>ms</span>
-        </mat-form-field>
-        <mat-hint>How often to check for dead Claude processes</mat-hint>
-      </div>
-      
-      <button mat-raised-button color="warn" (click)="clearAllLogs()">
-        <mat-icon>delete_sweep</mat-icon> Clear All Logs
-      </button>
-    </mat-card-content>
-  </mat-card>
-
-  <mat-card>
-    <mat-card-header>
-      <mat-card-title>Debug Options</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <div class="control-row">
-        <mat-slide-toggle [(ngModel)]="debugMode" (change)="toggleDebugMode()">
-          Debug Logging
-        </mat-slide-toggle>
-        <mat-hint>Console log all WebSocket messages and events</mat-hint>
-      </div>
-    </mat-card-content>
-  </mat-card>
-
-  <mat-card>
-    <mat-card-header>
-      <mat-card-title>Testing & Debug</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <p>Test log injection to verify the monitoring system:</p>
-      <div class="test-buttons">
-        <button mat-raised-button color="primary" (click)="injectTestLog('info')">
-          <mat-icon>info</mat-icon> Test Info Log
+    <!-- Connection -->
+    <mat-card id="section-connection">
+      <mat-card-header>
+        <mat-card-title>Connection</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p>WebSocket Server:
+          <span class="status-indicator" [class.connected]="connectionStatus$ | async" [class.disconnected]="!(connectionStatus$ | async)">
+            {{ (connectionStatus$ | async) ? 'Connected' : 'Disconnected' }}
+          </span>
+        </p>
+        <p>Server URL: http://localhost:3000</p>
+        <div class="control-row">
+          <mat-slide-toggle [(ngModel)]="autoRetry" (change)="toggleAutoRetry()">
+            Auto-retry connection
+          </mat-slide-toggle>
+        </div>
+        <button mat-raised-button color="primary" (click)="reconnectServer()">
+          <mat-icon>refresh</mat-icon> Reconnect
         </button>
-        <button mat-raised-button color="accent" (click)="injectTestLog('warning')">
-          <mat-icon>warning</mat-icon> Test Warning
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Monitoring -->
+    <mat-card id="section-monitoring">
+      <mat-card-header>
+        <mat-card-title>Monitoring</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Auto-detect Claude processes: Enabled</p>
+        <div class="control-row">
+          <mat-form-field appearance="outline" class="compact-field">
+            <mat-label>Log Retention</mat-label>
+            <input matInput type="number" [(ngModel)]="logRetention" (change)="updateLogRetention()" min="100" max="10000">
+            <span matSuffix>entries</span>
+          </mat-form-field>
+        </div>
+        <div class="control-row">
+          <mat-form-field appearance="outline" class="compact-field">
+            <mat-label>Update Interval</mat-label>
+            <input matInput type="number" [(ngModel)]="updateInterval" (change)="updateUpdateInterval()" min="1000" max="60000">
+            <span matSuffix>ms</span>
+          </mat-form-field>
+        </div>
+        <div class="control-row">
+          <mat-form-field appearance="outline" class="compact-field">
+            <mat-label>Agent Cleanup Interval</mat-label>
+            <input matInput type="number" [(ngModel)]="cleanupInterval" (change)="updateCleanupInterval()" min="1000" max="300000">
+            <span matSuffix>ms</span>
+          </mat-form-field>
+          <mat-hint>How often to check for dead Claude processes</mat-hint>
+        </div>
+        <button mat-raised-button color="warn" (click)="clearAllLogs()">
+          <mat-icon>delete_sweep</mat-icon> Clear All Logs
         </button>
-        <button mat-raised-button color="warn" (click)="injectTestLog('error')">
-          <mat-icon>error</mat-icon> Test Error
-        </button>
-      </div>
-    </mat-card-content>
-  </mat-card>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Terminal Integration -->
+    <mat-card id="section-terminal">
+      <mat-card-header>
+        <mat-card-title>Terminal Integration</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="control-row">
+          <mat-slide-toggle [(ngModel)]="terminalAutoDetect" (change)="updateTerminalPref('auto_detect', terminalAutoDetect)">
+            Auto-detect terminal type
+          </mat-slide-toggle>
+          <mat-hint>Automatically detect Terminal.app, iTerm2, or tmux per session</mat-hint>
+        </div>
+        <div class="control-row" *ngIf="!terminalAutoDetect">
+          <mat-form-field appearance="outline" class="compact-field">
+            <mat-label>Preferred Terminal</mat-label>
+            <mat-select [(ngModel)]="terminalPreferred" (selectionChange)="updateTerminalPref('preferred', terminalPreferred)">
+              <mat-option value="auto">Auto</mat-option>
+              <mat-option value="terminal.app">Terminal.app</mat-option>
+              <mat-option value="iterm2">iTerm2</mat-option>
+              <mat-option value="tmux">tmux</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Session Discovery -->
+    <mat-card id="section-discovery">
+      <mat-card-header>
+        <mat-card-title>Session Discovery</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="control-row">
+          <mat-slide-toggle [(ngModel)]="watcherEnabled" (change)="updateWatcherPref('enabled', watcherEnabled)">
+            Filesystem session watcher
+          </mat-slide-toggle>
+          <mat-hint>Automatically discover Claude sessions from ~/.claude/projects/</mat-hint>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Notifications -->
+    <mat-card id="section-notifications">
+      <mat-card-header>
+        <mat-card-title>Notifications</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="control-row">
+          <mat-slide-toggle [(ngModel)]="notificationsEnabled" (change)="updateNotificationPref('enabled', notificationsEnabled)">
+            Enable notifications
+          </mat-slide-toggle>
+        </div>
+        <div class="control-row">
+          <mat-slide-toggle [(ngModel)]="notifyMacOS" (change)="updateNotificationPref('macos_native', notifyMacOS)" [disabled]="!notificationsEnabled">
+            Native macOS notifications
+          </mat-slide-toggle>
+        </div>
+        <div class="notification-events" *ngIf="notificationsEnabled">
+          <p class="subsection-label">Notify on:</p>
+          <div class="control-row">
+            <mat-slide-toggle [(ngModel)]="notifyOnWaiting" (change)="updateNotificationPref('on_waiting', notifyOnWaiting)">
+              Agent waiting for input
+            </mat-slide-toggle>
+          </div>
+          <div class="control-row">
+            <mat-slide-toggle [(ngModel)]="notifyOnFailed" (change)="updateNotificationPref('on_failed', notifyOnFailed)">
+              Task failed
+            </mat-slide-toggle>
+          </div>
+          <div class="control-row">
+            <mat-slide-toggle [(ngModel)]="notifyOnCompleted" (change)="updateNotificationPref('on_completed', notifyOnCompleted)">
+              Task completed
+            </mat-slide-toggle>
+          </div>
+          <div class="control-row">
+            <mat-slide-toggle [(ngModel)]="notifyOnPermission" (change)="updateNotificationPref('on_permission_request', notifyOnPermission)">
+              Permission requested
+            </mat-slide-toggle>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Storage -->
+    <mat-card id="section-storage">
+      <mat-card-header>
+        <mat-card-title>Storage</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Database: ~/.minion-orchestra/orchestra.db</p>
+        <p class="hint">Events, logs, and prompt history are stored persistently</p>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Debug -->
+    <mat-card id="section-debug">
+      <mat-card-header>
+        <mat-card-title>Debug</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="control-row">
+          <mat-slide-toggle [(ngModel)]="debugMode" (change)="toggleDebugMode()">
+            Debug Logging
+          </mat-slide-toggle>
+          <mat-hint>Console log all WebSocket messages and events</mat-hint>
+        </div>
+        <div class="test-buttons">
+          <p>Test log injection:</p>
+          <button mat-raised-button color="primary" (click)="injectTestLog('info')">
+            <mat-icon>info</mat-icon> Info
+          </button>
+          <button mat-raised-button color="accent" (click)="injectTestLog('warning')">
+            <mat-icon>warning</mat-icon> Warning
+          </button>
+          <button mat-raised-button color="warn" (click)="injectTestLog('error')">
+            <mat-icon>error</mat-icon> Error
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
 </div>

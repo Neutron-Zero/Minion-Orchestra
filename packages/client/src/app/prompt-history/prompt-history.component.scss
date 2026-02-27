@@ -1,0 +1,122 @@
+.prompt-history {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+
+  h2 {
+    margin: 0;
+    color: #f1f5f9;
+    font-size: 20px;
+    font-weight: 500;
+  }
+
+  .search-field {
+    width: 300px;
+  }
+}
+
+.prompt-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prompt-entry {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  padding: 12px 16px;
+  border-left: 3px solid #7c3aed;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .prompt-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+
+    .prompt-time {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .prompt-agent {
+      font-size: 11px;
+      color: #a78bfa;
+      background: rgba(124, 58, 237, 0.15);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+  }
+
+  .prompt-text {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.5;
+    word-break: break-word;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: rgba(255, 255, 255, 0.3);
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    margin: 4px 0;
+    font-size: 14px;
+  }
+
+  .hint {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.loading {
+  text-align: center;
+  padding: 48px 16px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+}
+
+// Dark theme form field overrides
+::ng-deep {
+  .search-field {
+    .mat-form-field-outline {
+      color: rgba(255, 255, 255, 0.2);
+    }
+    .mat-form-field-label {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    .mat-input-element {
+      color: #fff;
+    }
+    &.mat-focused .mat-form-field-outline {
+      color: #7c3aed;
+    }
+    &.mat-focused .mat-form-field-label {
+      color: #7c3aed;
+    }
+  }
+}

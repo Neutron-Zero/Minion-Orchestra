@@ -1,0 +1,45 @@
+<div class="agent-tree">
+  <div class="tree-node" *ngFor="let node of tree; trackBy: trackByNode">
+    <!-- Parent agent -->
+    <div class="tree-row parent-row" (click)="node.children.length > 0 && toggleNode(node)">
+      <span class="expand-icon" *ngIf="node.children.length > 0">
+        <mat-icon>{{ node.expanded ? 'expand_more' : 'chevron_right' }}</mat-icon>
+      </span>
+      <span class="expand-spacer" *ngIf="node.children.length === 0"></span>
+      <span class="status-dot" [style.backgroundColor]="getAgentColor(node.agent.id)"></span>
+      <mat-icon class="status-icon" [style.color]="getStatusColor(node.agent.status)">
+        {{ getStatusIcon(node.agent.status) }}
+      </mat-icon>
+      <span class="agent-id">{{ getFormattedAgentId(node.agent.id) }}</span>
+      <span class="agent-folder" *ngIf="getFolderName(node.agent)">{{ getFolderName(node.agent) }}</span>
+      <span class="agent-task" *ngIf="node.agent.currentTask">{{ node.agent.currentTask }}</span>
+      <span class="child-count" *ngIf="node.children.length > 0">
+        {{ node.children.length }} sub
+      </span>
+      <div class="row-actions">
+        <button mat-icon-button matTooltip="Focus terminal" (click)="focus.emit(node.agent); $event.stopPropagation()">
+          <mat-icon>open_in_new</mat-icon>
+        </button>
+        <button mat-icon-button matTooltip="Remove" (click)="remove.emit(node.agent); $event.stopPropagation()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Children -->
+    <div class="children" *ngIf="node.expanded && node.children.length > 0">
+      <div class="tree-row child-row" *ngFor="let child of node.children; trackBy: trackByNode">
+        <span class="tree-line"></span>
+        <mat-icon class="status-icon" [style.color]="getStatusColor(child.agent.status)">
+          {{ getStatusIcon(child.agent.status) }}
+        </mat-icon>
+        <span class="agent-id sub">{{ child.agent.name }}</span>
+        <span class="agent-task" *ngIf="child.agent.currentTask">{{ child.agent.currentTask }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty-tree" *ngIf="tree.length === 0">
+    No agents connected
+  </div>
+</div>

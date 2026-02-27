@@ -9,9 +9,9 @@
     "start:debug": "DEBUG=true packages/server/start.sh",
     "dev": "concurrently --names server,client --raw \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "packages/server/start.sh",
-    "dev:client": "cd packages/client && npm run start:ui",
+    "dev:client": "cd packages/client && npm install --prefer-offline --no-audit && npm run start:ui",
     "build": "cd packages/client && ng build --configuration production",
-    "install:all": "cd packages/client && npm install && pip3 install fastapi uvicorn[standard] python-socketio psutil aiofiles",
+    "install:all": "cd packages/client && npm install && pip3 install fastapi uvicorn[standard] python-socketio psutil aiofiles aiosqlite watchdog",
     "clean": "rm -rf node_modules packages/*/node_modules packages/client/dist",
     "test": "cd packages/client && npm test"
   },

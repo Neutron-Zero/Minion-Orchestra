@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -12,6 +13,9 @@ from config import config
 from models import HookEvent
 from services import agent_manager, task_queue, log_hook_data, read_hook_logs, clear_hook_logs, scan_claude_processes
 from websocket_handlers import broadcast_agent_update, broadcast_task_update
+from terminal_actions import focus_session, send_input
+from notifications import notify
+import database as db
 
 router = APIRouter()
 
@@ -178,7 +182,8 @@ async def _handle_subagent_stop(agent, socket_id, event, sio):
 
 
 async def _handle_stop(agent, socket_id, event, sio):
-    agent.status = "idle"
+    # Subagents complete; parent agents cycle back to idle
+    agent.status = "completed" if agent.type == "subagent" else "idle"
     agent.current_task = None
     agent.current_tool = None
     if task_queue.get_queue()["inProgress"] > 0:
@@ -289,6 +294,12 @@ EVENT_HANDLERS = {
 async def hook_endpoint(event: HookEvent, request: Request):
     try:
         sio = request.app.state.sio
+
+        # Ignore hooks from the Claude session that launched this server
+        own_pid = getattr(request.app.state, "own_claude_pid", None)
+        if own_pid and event.pid == own_pid:
+            return {"success": True, "skipped": True, "reason": "own session"}
+
         log_hook_data(event.eventType, event.model_dump())
 
         agent, socket_id = agent_manager.find_agent_by_id(event.agentId)
@@ -317,6 +328,34 @@ async def hook_endpoint(event: HookEvent, request: Request):
         agent_manager.set_agent(socket_id, agent)
         await broadcast_agent_update(sio, agent_manager)
         await broadcast_task_update(sio, task_queue)
+
+        # Store event in database
+        prompt_msg = None
+        if event.eventType == "UserPromptSubmit":
+            prompt_msg = (event.data or {}).get("prompt", "")
+        await db.store_event(
+            event_type=event.eventType, agent_id=event.agentId,
+            session_id=event.agentId, timestamp=_ts(event.timestamp),
+            message=prompt_msg, metadata=event.data,
+        )
+
+        # Fire native notifications for key events
+        _folder = os.path.basename(agent.working_directory) if agent.working_directory else ""
+        _task = agent.current_task or ""
+        if event.eventType == "PermissionRequest":
+            tool = (event.data or {}).get("tool_name", "tool")
+            await notify("permission_request", event.agentId, agent.name,
+                         f"Permission requested for {tool}", folder=_folder, task=_task)
+        elif agent.status in ("waiting", "awaiting-permission"):
+            await notify("waiting", event.agentId, agent.name,
+                         "Waiting for input", folder=_folder, task=_task)
+        elif event.eventType == "Stop":
+            await notify("completed", event.agentId, agent.name,
+                         "Task completed", folder=_folder, task=_task)
+        elif event.eventType == "PostToolUseFailure":
+            tool = (event.data or {}).get("tool_name", "unknown")
+            await notify("failed", event.agentId, agent.name,
+                         f"Tool failed: {tool}", folder=_folder, task=_task)
 
         return {"success": True, "eventType": event.eventType, "agentId": event.agentId}
     except Exception as e:
@@ -530,7 +569,156 @@ async def log_endpoint(request: Request):
         }
         agent_manager.add_agent_log(agent.id, log_entry)
         await sio.emit("log", log_entry)
+        await db.store_log(agent.id, level, message, None, log_entry["timestamp"])
         return {"success": True}
     except Exception as e:
         print(f"Error in /api/log: {e}")
         return {"success": False, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Terminal Action Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/api/actions/focus")
+async def action_focus(request: Request):
+    try:
+        body: dict[str, Any] = await request.json()
+        agent_id = body.get("agentId")
+        agent, _ = agent_manager.find_agent_by_id(agent_id)
+        if not agent or not agent.pid:
+            return {"success": False, "error": "Agent not found or no PID"}
+        result = await focus_session(agent.pid)
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/api/actions/input")
+async def action_input(request: Request):
+    try:
+        body: dict[str, Any] = await request.json()
+        agent_id = body.get("agentId")
+        text = body.get("text", "")
+        agent, _ = agent_manager.find_agent_by_id(agent_id)
+        if not agent or not agent.pid:
+            return {"success": False, "error": "Agent not found or no PID"}
+        result = await send_input(agent.pid, text)
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Config Endpoint (extended)
+# ---------------------------------------------------------------------------
+
+@router.get("/api/config")
+async def get_config():
+    return {"success": True, "config": config.to_dict()}
+
+
+@router.patch("/api/config")
+async def patch_config(request: Request):
+    try:
+        body: dict[str, Any] = await request.json()
+        for section in ("notifications", "session_watcher", "terminal"):
+            if section in body and isinstance(body[section], dict):
+                setter = getattr(config, f"set_{section}_pref", None)
+                if setter:
+                    for key, value in body[section].items():
+                        setter(key, value)
+        return {"success": True, "config": config.to_dict()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Prompt History Endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/api/prompts")
+async def get_prompts(search: str | None = None, project: str | None = None,
+                      since: str | None = None, until: str | None = None, limit: int = 100):
+    try:
+        prompts = await db.get_prompts(search=search, project=project, since=since, until=until, limit=limit)
+        return {"success": True, "prompts": prompts}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Insights Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/api/insights/daily")
+async def insights_daily(days: int = 30):
+    try:
+        events = await db.get_events(limit=10000, since=None)
+        # Aggregate by day
+        daily: dict[str, int] = {}
+        for event in events:
+            day = event.get("timestamp", "")[:10]
+            if day:
+                daily[day] = daily.get(day, 0) + 1
+        sorted_days = sorted(daily.items())[-days:]
+        return {"success": True, "daily": [{"date": d, "count": c} for d, c in sorted_days]}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/api/insights/models")
+async def insights_models():
+    try:
+        events = await db.get_events(limit=10000, event_type="SessionStart")
+        models: dict[str, int] = {}
+        for event in events:
+            meta = event.get("metadata") or {}
+            model = meta.get("model") or meta.get("version") or "unknown"
+            models[model] = models.get(model, 0) + 1
+        return {"success": True, "models": [{"model": m, "count": c} for m, c in models.items()]}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/api/insights/heatmap")
+async def insights_heatmap():
+    try:
+        events = await db.get_events(limit=50000)
+        heatmap: dict[str, int] = {}
+        for event in events:
+            ts = event.get("timestamp", "")
+            if len(ts) >= 13:
+                day_hour = ts[:13]  # "2026-02-27T14"
+                heatmap[day_hour] = heatmap.get(day_hour, 0) + 1
+        return {"success": True, "heatmap": [{"key": k, "count": v} for k, v in sorted(heatmap.items())]}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Plans Endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/api/plans")
+async def get_plans():
+    import glob
+    import os
+    plans_dir = os.path.expanduser("~/.claude")
+    results = []
+    for plan_file in glob.glob(os.path.join(plans_dir, "**", "*.plan.md"), recursive=True):
+        try:
+            with open(plan_file, "r") as f:
+                content = f.read()
+            stat = os.stat(plan_file)
+            results.append({
+                "path": plan_file,
+                "name": os.path.basename(plan_file),
+                "content": content,
+                "modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+                "size": stat.st_size,
+            })
+        except Exception:
+            pass
+    results.sort(key=lambda p: p["modified"], reverse=True)
+    return {"success": True, "plans": results}

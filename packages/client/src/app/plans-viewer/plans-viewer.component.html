@@ -1,0 +1,42 @@
+<div class="plans-viewer">
+  <div class="plans-sidebar">
+    <div class="sidebar-header">
+      <h3>Plans</h3>
+      <button mat-icon-button matTooltip="Refresh" (click)="loadPlans()">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+    <div class="plan-list">
+      <div class="plan-item"
+           *ngFor="let plan of plans"
+           [class.selected]="selectedPlan === plan"
+           (click)="selectPlan(plan)">
+        <mat-icon class="plan-icon">description</mat-icon>
+        <div class="plan-info">
+          <span class="plan-name">{{ getShortName(plan.name) }}</span>
+          <span class="plan-date">{{ formatDate(plan.modified) }}</span>
+        </div>
+      </div>
+      <div class="empty-sidebar" *ngIf="plans.length === 0 && !loading">
+        No plans found
+      </div>
+    </div>
+  </div>
+
+  <div class="plans-content">
+    <div class="content-header" *ngIf="selectedPlan">
+      <span class="content-title">{{ getShortName(selectedPlan.name) }}</span>
+      <span class="content-meta">{{ formatDate(selectedPlan.modified) }} | {{ formatSize(selectedPlan.size) }}</span>
+    </div>
+    <div class="content-body" *ngIf="selectedPlan">
+      <pre class="plan-content">{{ selectedPlan.content }}</pre>
+    </div>
+    <div class="empty-content" *ngIf="!selectedPlan && !loading">
+      <mat-icon>article</mat-icon>
+      <p>Select a plan to view</p>
+    </div>
+    <div class="loading" *ngIf="loading">
+      Loading plans...
+    </div>
+  </div>
+</div>

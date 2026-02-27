@@ -10,10 +10,15 @@ import { Observable } from 'rxjs';
 export class OverviewComponent implements OnInit {
   agents$: Observable<Agent[]>;
   taskQueue$: Observable<TaskQueue>;
+  viewMode: 'list' | 'kanban' | 'tree' = 'list';
 
   constructor(private agentService: AgentMonitorService) {
     this.agents$ = this.agentService.getAgents();
     this.taskQueue$ = this.agentService.getTaskQueue();
+    const saved = localStorage.getItem('overview-view-mode');
+    if (saved === 'list' || saved === 'kanban' || saved === 'tree') {
+      this.viewMode = saved;
+    }
   }
 
   ngOnInit(): void {
@@ -70,6 +75,15 @@ export class OverviewComponent implements OnInit {
 
   clearAllAgents(): void {
     this.agentService.clearAllAgents();
+  }
+
+  focusAgent(agent: Agent): void {
+    this.agentService.focusAgent(agent.id);
+  }
+
+  setViewMode(mode: 'list' | 'kanban' | 'tree'): void {
+    this.viewMode = mode;
+    localStorage.setItem('overview-view-mode', mode);
   }
 
   // Refresh removed - using real-time WebSocket updates instead

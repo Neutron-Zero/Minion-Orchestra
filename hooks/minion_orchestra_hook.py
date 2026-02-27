@@ -65,8 +65,16 @@ def main():
     # Use parent PID as stable agent identifier -- matches the scan-registered ID
     agent_id = f"claude-proc-{os.getppid()}"
 
-    if 'cwd' in event_data:
-        agent_name = os.path.basename(event_data['cwd']) or 'Claude Agent'
+    # Use the session's root cwd (from the Claude process), not the tool's cwd
+    # which can change per Bash command
+    try:
+        import psutil
+        parent_cwd = psutil.Process(os.getppid()).cwd()
+    except Exception:
+        parent_cwd = event_data.get('cwd', '')
+
+    if parent_cwd:
+        agent_name = os.path.basename(parent_cwd) or 'Claude Agent'
     else:
         agent_name = os.uname().nodename
 
@@ -77,8 +85,10 @@ def main():
         'agentName': agent_name,
         'timestamp': datetime.now().isoformat(),
         'pid': os.getppid(),
-        'data': event_data
+        'data': event_data,
     }
+    # Override cwd with the session root, not the tool's subdirectory
+    payload['data']['cwd'] = parent_cwd
 
     # Send to hook endpoint
     send_to_minion_orchestra(HOOK_ENDPOINT, payload)

@@ -66,22 +66,43 @@ def clear_hook_logs():
 # Process Utils
 # ---------------------------------------------------------------------------
 
+def _get_own_ancestor_pids() -> set[int]:
+    """Get PIDs of all ancestors of the current process (to exclude our own tree)."""
+    pids: set[int] = set()
+    try:
+        p = psutil.Process(os.getpid())
+        while p.pid > 1:
+            pids.add(p.pid)
+            p = p.parent()
+            if p is None:
+                break
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        pass
+    return pids
+
+
 def scan_claude_processes(am: AgentManager) -> int:
     """Scan for running Claude Code processes and register them as agents."""
-    # Collect PIDs already known from hook-registered agents
     known_pids = {agent.pid for agent in am.get_all_agents() if agent.pid}
+    own_tree = _get_own_ancestor_pids()
 
     found = 0
-    for proc in psutil.process_iter(["pid", "cmdline", "cwd"]):
+    for proc in psutil.process_iter(["pid", "cmdline", "cwd", "name"]):
         try:
             cmdline = proc.info.get("cmdline") or []
-            cmd = " ".join(cmdline)
-            if "claude" not in cmd.lower() or "hook" in cmd.lower():
+            # Only match processes where the actual command is "claude"
+            if not cmdline or cmdline[0].rstrip("/").split("/")[-1] != "claude":
                 continue
 
             pid = proc.info["pid"]
 
-            # Skip if a hook-registered agent already tracks this PID
+            # Skip our own ancestor Claude process (the one running this server)
+            if pid in own_tree:
+                continue
+
+            pid = proc.info["pid"]
+
+            # Skip if any agent already tracks this PID
             if pid in known_pids:
                 continue
 
@@ -99,31 +120,58 @@ def scan_claude_processes(am: AgentManager) -> int:
                 working_directory=cwd, pid=pid,
             )
             am.set_agent(f"scan-{agent_id}", agent)
+            known_pids.add(pid)
             found += 1
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
     return found
 
 
+# Grace periods before removing dead agents
+OFFLINE_GRACE_SECONDS = 60
+COMPLETED_SUBAGENT_GRACE_SECONDS = 5 * 60  # Keep completed subagents for 5 minutes
+
+
 def cleanup_dead_agents(am: AgentManager, tq: TaskQueue) -> int:
-    """Remove agents whose process is no longer running."""
-    removed_count = 0
+    """Mark dead agents as offline, remove after grace period."""
+    changed_count = 0
     to_remove: list[str] = []
+    now = datetime.now(timezone.utc)
 
     for socket_id, agent in list(am.agents.items()):
         if not agent or not agent.id:
             to_remove.append(socket_id)
             continue
 
+        # Completed subagents: keep visible for 5 minutes then remove
+        if agent.type == "subagent" and agent.status == "completed":
+            age = (now - agent.last_activity).total_seconds() if agent.last_activity else COMPLETED_SUBAGENT_GRACE_SECONDS + 1
+            if age > COMPLETED_SUBAGENT_GRACE_SECONDS:
+                to_remove.append(socket_id)
+                changed_count += 1
+            continue
+
         # If agent has a PID, check if the process is still alive
         if agent.pid and not psutil.pid_exists(agent.pid):
-            to_remove.append(socket_id)
-            tq.decrement(agent.status)
-            removed_count += 1
+            if agent.status not in ("offline", "completed"):
+                # Transition to offline instead of removing
+                tq.decrement(agent.status)
+                agent.status = "offline"
+                agent.current_task = None
+                agent.current_tool = None
+                agent.last_activity = now
+                am.set_agent(socket_id, agent)
+                changed_count += 1
+            else:
+                # Already offline/completed -- remove after grace period
+                age = (now - agent.last_activity).total_seconds() if agent.last_activity else OFFLINE_GRACE_SECONDS + 1
+                if age > OFFLINE_GRACE_SECONDS:
+                    to_remove.append(socket_id)
+                    changed_count += 1
 
     for socket_id in to_remove:
         am.remove_agent(socket_id)
-    return removed_count
+    return changed_count
 
 
 # ---------------------------------------------------------------------------
@@ -314,8 +362,11 @@ class CleanupService:
     async def _cleanup_loop(self):
         while True:
             await asyncio.sleep(config.cleanup_interval_ms / 1000)
-            removed = cleanup_dead_agents(self.agent_manager, self.task_queue)
-            if removed > 0:
+            # Scan for new Claude processes
+            found = scan_claude_processes(self.agent_manager)
+            # Clean up dead agents
+            changed = cleanup_dead_agents(self.agent_manager, self.task_queue)
+            if found > 0 or changed > 0:
                 await self.sio.emit("agent_update", self.agent_manager.get_all_agents_serialized())
                 await self.sio.emit("task_update", self.task_queue.get_queue())
 

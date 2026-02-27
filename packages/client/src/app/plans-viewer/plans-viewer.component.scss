@@ -1,0 +1,153 @@
+.plans-viewer {
+  display: flex;
+  height: 100%;
+  gap: 0;
+}
+
+.plans-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+    h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #f1f5f9;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    button mat-icon {
+      font-size: 18px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+  }
+}
+
+.plan-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.plan-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  &.selected {
+    background: rgba(124, 58, 237, 0.15);
+
+    .plan-icon {
+      color: #a78bfa;
+    }
+  }
+
+  .plan-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  .plan-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+
+    .plan-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: #f1f5f9;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .plan-date {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.35);
+    }
+  }
+}
+
+.plans-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+    .content-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: #f1f5f9;
+    }
+
+    .content-meta {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.35);
+    }
+  }
+
+  .content-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .plan-content {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+  }
+}
+
+.empty-sidebar,
+.empty-content,
+.loading {
+  text-align: center;
+  padding: 32px 16px;
+  color: rgba(255, 255, 255, 0.25);
+
+  mat-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 8px;
+  }
+
+  p {
+    font-size: 13px;
+    margin: 4px 0;
+  }
+}

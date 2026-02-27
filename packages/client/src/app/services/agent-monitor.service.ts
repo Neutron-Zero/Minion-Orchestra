@@ -458,6 +458,26 @@ export class AgentMonitorService {
     this.websocket.reassignTask(taskId, newAgentId);
   }
 
+  focusAgent(agentId: string): void {
+    fetch(`${this.serverUrl}/api/actions/focus`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId })
+    }).catch(error => {
+      console.error('Error focusing agent:', error);
+    });
+  }
+
+  sendAgentInput(agentId: string, text: string): void {
+    fetch(`${this.serverUrl}/api/actions/input`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId, text })
+    }).catch(error => {
+      console.error('Error sending input:', error);
+    });
+  }
+
   removeAgent(agentId: string): void {
     const agents = this.agents$.value;
     const filteredAgents = agents.filter(agent => agent.id !== agentId);

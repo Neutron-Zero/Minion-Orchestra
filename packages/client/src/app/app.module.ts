@@ -30,6 +30,10 @@ import { LogsComponent } from './logs/logs.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { SettingsPageComponent } from './settings-page/settings-page.component';
 import { AgentCardComponent } from './agent-card/agent-card.component';
+import { KanbanBoardComponent } from './kanban-board/kanban-board.component';
+import { AgentTreeComponent } from './agent-tree/agent-tree.component';
+import { PromptHistoryComponent } from './prompt-history/prompt-history.component';
+import { PlansViewerComponent } from './plans-viewer/plans-viewer.component';
 
 @NgModule({
   declarations: [
@@ -42,7 +46,11 @@ import { AgentCardComponent } from './agent-card/agent-card.component';
     LogsComponent,
     AnalyticsComponent,
     SettingsPageComponent,
-    AgentCardComponent
+    AgentCardComponent,
+    KanbanBoardComponent,
+    AgentTreeComponent,
+    PromptHistoryComponent,
+    PlansViewerComponent
   ],
   imports: [
     BrowserModule,

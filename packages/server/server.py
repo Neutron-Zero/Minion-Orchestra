@@ -18,6 +18,8 @@ from config import config
 from routes import router
 from services import agent_manager, task_queue, CleanupService, scan_claude_processes
 from websocket_handlers import register_handlers
+from database import init_db, close_db
+from session_watcher import SessionWatcher
 
 # Path to the pre-built Angular client
 CLIENT_DIST = os.path.join(os.path.dirname(__file__), "..", "client", "dist", "minion-orchestra")
@@ -25,9 +27,9 @@ CLIENT_DIST = os.path.join(os.path.dirname(__file__), "..", "client", "dist", "m
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*", logger=False, engineio_logger=False)
 
 cleanup_service = CleanupService(agent_manager, task_queue, sio)
+session_watcher = SessionWatcher(agent_manager, sio)
 
-
-VERSION = "1.0.0"
+VERSION = "1.3.1"
 
 @asynccontextmanager
 async def lifespan(app):
@@ -67,9 +69,23 @@ async def lifespan(app):
         out()
     out(f"{p}  Waiting for minions to connect...{r}")
     out()
+    await init_db()
     cleanup_service.start()
+    session_watcher.start()
     yield
-    cleanup_service.stop()
+    # Shutdown: stop background threads first, then async resources
+    try:
+        session_watcher.stop()
+    except Exception:
+        pass
+    try:
+        cleanup_service.stop()
+    except Exception:
+        pass
+    try:
+        await close_db()
+    except Exception:
+        pass
 
 
 app = FastAPI(title="Minion Command Server", lifespan=lifespan)
@@ -82,6 +98,8 @@ app.state.sio = sio
 app.state.agent_manager = agent_manager
 app.state.task_queue = task_queue
 app.state.cleanup_service = cleanup_service
+app.state.session_watcher = session_watcher
+app.state.own_claude_pid = None
 
 register_handlers(sio, agent_manager, task_queue)
 

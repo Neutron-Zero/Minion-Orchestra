@@ -1,0 +1,33 @@
+<div class="prompt-history">
+  <div class="history-header">
+    <h2>Prompt History</h2>
+    <div class="search-bar">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search prompts</mat-label>
+        <input matInput [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" placeholder="Search...">
+        <mat-icon matSuffix (click)="onSearch()" style="cursor: pointer">search</mat-icon>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <div class="prompt-list" *ngIf="!loading">
+    <div class="prompt-entry" *ngFor="let prompt of filteredPrompts">
+      <div class="prompt-meta">
+        <span class="prompt-time">{{ formatTimestamp(prompt.timestamp) }}</span>
+        <span class="prompt-agent">{{ getAgentShortId(prompt.agent_id) }}</span>
+      </div>
+      <div class="prompt-text">{{ truncateMessage(prompt.message) }}</div>
+    </div>
+
+    <div class="empty-state" *ngIf="filteredPrompts.length === 0">
+      <mat-icon>history</mat-icon>
+      <p>No prompts found</p>
+      <p class="hint" *ngIf="searchTerm">Try a different search term</p>
+      <p class="hint" *ngIf="!searchTerm">Prompts will appear here as agents receive them</p>
+    </div>
+  </div>
+
+  <div class="loading" *ngIf="loading">
+    Loading prompts...
+  </div>
+</div>
