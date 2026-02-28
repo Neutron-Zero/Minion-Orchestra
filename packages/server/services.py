@@ -198,6 +198,12 @@ class AgentManager:
                 return agent, sid
         return None, None
 
+    def find_agent_by_pid(self, pid: int) -> tuple[Agent | None, str | None]:
+        for sid, agent in self.agents.items():
+            if agent.pid == pid:
+                return agent, sid
+        return None, None
+
     def set_agent(self, socket_id: str, agent: Agent):
         self.agents[socket_id] = agent
 

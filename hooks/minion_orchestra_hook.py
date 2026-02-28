@@ -65,11 +65,14 @@ def main():
     # Use parent PID as stable agent identifier -- matches the scan-registered ID
     agent_id = f"claude-proc-{os.getppid()}"
 
-    # Use the session's root cwd (from the Claude process), not the tool's cwd
-    # which can change per Bash command
+    # Use psutil to get the session's root cwd and the grandparent PID
+    # (grandparent PID = parent of the Claude process, used for hierarchy)
+    parent_pid = None
     try:
         import psutil
-        parent_cwd = psutil.Process(os.getppid()).cwd()
+        proc = psutil.Process(os.getppid())
+        parent_cwd = proc.cwd()
+        parent_pid = proc.ppid()
     except Exception:
         parent_cwd = event_data.get('cwd', '')
 
@@ -85,6 +88,7 @@ def main():
         'agentName': agent_name,
         'timestamp': datetime.now().isoformat(),
         'pid': os.getppid(),
+        'parentPid': parent_pid,
         'data': event_data,
     }
     # Override cwd with the session root, not the tool's subdirectory

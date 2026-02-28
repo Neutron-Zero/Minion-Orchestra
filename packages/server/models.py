@@ -42,6 +42,7 @@ class Agent(BaseModel):
     last_tool_used: str | None = None
     last_tool_time: datetime | None = None
     pid: int | None = None
+    parent_pid: int | None = None
     session_data: dict[str, Any] | None = None
     working_directory: str | None = None
 
@@ -52,5 +53,6 @@ class HookEvent(BaseModel):
     agentName: str | None = None
     timestamp: str | None = None
     pid: int | None = None
+    parentPid: int | None = None
     data: dict[str, Any] | None = None
     response: dict[str, Any] | None = None

@@ -24,6 +24,8 @@ export interface Agent {
   recentTools?: string[];
   lastToolUsed?: string;
   lastToolTime?: Date;
+  pid?: number;
+  parentPid?: number;
 }
 
 export interface AgentMetrics {

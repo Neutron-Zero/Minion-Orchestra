@@ -161,19 +161,14 @@ async def _handle_post_tool_use(agent, socket_id, event, sio):
 async def _handle_subagent_start(agent, socket_id, event, sio):
     data = event.data or {}
     description = data.get("description", "Subagent Task")
-    subagent_id = f"{event.agentId}-sub-{int(datetime.now(timezone.utc).timestamp() * 1000)}"
-    subagent = agent_manager.create_agent(
-        id=subagent_id, socket_id=f"hook-{subagent_id}", name=f"Subagent: {description}",
-        type="subagent", status="working", current_task=description,
-    )
-    agent_manager.set_agent(f"hook-{subagent_id}", subagent)
+    # The subagent process will self-register via its own hook events with parentPid set
     await _emit_and_store_log(sio,event.timestamp, "info", f"Subagent started: {description}", event.agentId)
-    await broadcast_agent_update(sio, agent_manager)
 
 
 async def _handle_subagent_stop(agent, socket_id, event, sio):
-    prefix = f"{event.agentId}-sub-"
-    subagents = [a for a in agent_manager.get_all_agents() if a.type == "subagent" and a.id.startswith(prefix)]
+    # Find subagents whose parent_pid matches this agent's pid
+    subagents = [a for a in agent_manager.get_all_agents()
+                 if a.type == "subagent" and a.parent_pid and a.parent_pid == agent.pid]
     for sub in subagents:
         sub.status = "completed"
         sub.current_task = None
@@ -315,10 +310,17 @@ async def hook_endpoint(event: HookEvent, request: Request):
         cwd = (event.data or {}).get("cwd", "")
 
         if not agent:
+            # Determine if this is a subagent by checking if parentPid matches a known agent
+            agent_type = "claude-code"
+            if event.parentPid:
+                parent_agent, _ = agent_manager.find_agent_by_pid(event.parentPid)
+                if parent_agent:
+                    agent_type = "subagent"
+
             agent = agent_manager.create_agent(
                 id=event.agentId, socket_id=f"hook-{event.agentId}",
-                name=event.agentName or "Claude Agent", type="claude-code", status="idle",
-                working_directory=cwd, pid=event.pid,
+                name=event.agentName or "Claude Agent", type=agent_type, status="idle",
+                working_directory=cwd, pid=event.pid, parent_pid=event.parentPid,
             )
             agent_manager.set_agent(f"hook-{event.agentId}", agent)
             socket_id = f"hook-{event.agentId}"
@@ -327,6 +329,8 @@ async def hook_endpoint(event: HookEvent, request: Request):
                 agent.working_directory = cwd
             if event.pid and not agent.pid:
                 agent.pid = event.pid
+            if event.parentPid and not agent.parent_pid:
+                agent.parent_pid = event.parentPid
             if event.agentName and agent.name != event.agentName:
                 agent.name = event.agentName
 
