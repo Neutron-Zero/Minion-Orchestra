@@ -1,20 +1,21 @@
 /* You can add global styles to this file, and also import other style files */
 
-html, body { 
-  height: 100%; 
+html, body {
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: none;
+  background: #0d1117;
 }
-body { 
-  margin: 0; 
+body {
+  margin: 0;
   font-family: Roboto, "Helvetica Neue", sans-serif;
 }
 
 // Fix tab text visibility and full-width background
 .mat-tab-group {
   .mat-tab-header {
-    background: rgb(30, 37, 44) !important;
+    background: #161b22 !important;
     width: 100vw !important;
     margin-left: calc(-50vw + 50%) !important;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
@@ -103,11 +104,16 @@ p, li {
   line-height: 1.6;
 }
 
-// Global card styling
+// Global card/panel base style
+.card-base {
+  background: #161b22;
+  border-radius: 12px;
+  border: 1px solid #30363d;
+}
+
 .mat-card {
-  background: rgb(30, 37, 44) !important;
+  @extend .card-base;
   color: #ffffff !important;
-  border: 1px solid rgba(255,255,255,0.06) !important;
 
   .mat-card-title {
     color: #ffffff !important;
@@ -118,12 +124,9 @@ p, li {
   }
 }
 
-// Reusable panel container
 .panel {
-  background: #161b22;
-  border-radius: 12px;
+  @extend .card-base;
   padding: 20px;
-  border: 1px solid #30363d;
 }
 
 .panel-header {
@@ -233,7 +236,7 @@ p, li {
 }
 
 .agent-card-compact {
-  background: rgb(30, 37, 44) !important;
+  background: #1e252c !important;
   color: #ffffff;
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 8px;
@@ -317,7 +320,7 @@ p, li {
   gap: 16px;
   
   .agent-row {
-    background: rgb(30, 37, 44) !important;
+    @extend .card-base;
     
     .agent-avatar {
       background: rgba(23,29,33,0.6) !important;

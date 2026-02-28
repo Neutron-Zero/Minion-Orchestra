@@ -11,14 +11,20 @@
   padding-bottom: 8px;
   flex: 1;
   min-height: 0;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .kanban-column {
   flex: 0 0 280px;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
+  background: #161b22;
+  border-radius: 12px;
+  border: 1px solid #30363d;
   overflow: hidden;
   min-height: 0;
 }
@@ -28,8 +34,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  border-top: 3px solid;
-  background: rgba(255, 255, 255, 0.02);
+  border: none;
+  border-top: 3px solid transparent;
+  background: transparent;
   flex-shrink: 0;
 
   .column-label {
@@ -173,6 +180,17 @@
       margin-left: auto;
       flex-shrink: 0;
     }
+  }
+}
+
+.subagent-card {
+  margin-left: 16px;
+  border-left-width: 2px !important;
+  opacity: 0.85;
+
+  .card-line-1 .agent-id {
+    font-size: 11px;
+    font-weight: 500;
   }
 }
 

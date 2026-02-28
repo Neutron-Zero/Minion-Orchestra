@@ -1,46 +1,54 @@
+<ng-template #agentCard let-agent>
+  <div class="kanban-card" [class.subagent-card]="agent.type === 'subagent'"
+       [style.borderLeftColor]="getAgentColor(agent.id)">
+    <div class="card-line-1">
+      <span class="agent-id">{{ getFormattedAgentId(agent.id) }}</span>
+      <button class="kebab-btn" [matMenuTriggerFor]="agentMenu" (click)="$event.stopPropagation()">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #agentMenu="matMenu" class="agent-card-menu">
+        <button mat-menu-item (click)="focus.emit(agent)">
+          <mat-icon>terminal</mat-icon>
+          <span>Focus Terminal</span>
+        </button>
+        <button mat-menu-item (click)="viewDetails.emit(agent)">
+          <mat-icon>info</mat-icon>
+          <span>View Details</span>
+        </button>
+      </mat-menu>
+    </div>
+    <div class="card-task" *ngIf="agent.currentTask">{{ agent.currentTask }}</div>
+    <div class="card-line-2">
+      <span class="agent-folder" *ngIf="getFolderName(agent)">{{ getFolderName(agent) }}</span>
+    </div>
+    <div class="card-line-3" *ngIf="agent.currentTool || agent.recentTools?.length">
+      <span class="tool-pill" *ngIf="agent.currentTool">{{ agent.currentTool }}</span>
+      <ng-container *ngIf="!agent.currentTool && agent.recentTools?.length">
+        <span class="tool-pill recent" *ngFor="let tool of agent.recentTools?.slice(-3); trackBy: trackByTool">{{ tool }}</span>
+      </ng-container>
+      <span class="elapsed">{{ getElapsedTime(agent.startTime) }}</span>
+    </div>
+    <div class="card-line-3" *ngIf="!agent.currentTool && !agent.recentTools?.length">
+      <span class="elapsed">{{ getElapsedTime(agent.startTime) }}</span>
+    </div>
+  </div>
+</ng-template>
+
 <div class="kanban-board">
   <div class="kanban-column" *ngFor="let col of columns; trackBy: trackByColumn">
-    <div class="column-header" [style.borderColor]="col.color">
+    <div class="column-header" [style.borderTopColor]="col.color">
       <span class="column-label">{{ col.label }}</span>
       <span class="column-count" [style.backgroundColor]="col.color"
-            [style.color]="getCountTextColor(col.color)">{{ col.agents.length }}</span>
+            [style.color]="getCountTextColor(col.color)">{{ getAgentCount(col) }}</span>
     </div>
     <div class="column-body">
-      <div class="kanban-card"
-           *ngFor="let agent of col.agents; trackBy: trackByAgent"
-           [style.borderLeftColor]="getAgentColor(agent.id)">
-        <div class="card-line-1">
-          <span class="agent-id">{{ getFormattedAgentId(agent.id) }}</span>
-          <button class="kebab-btn" [matMenuTriggerFor]="agentMenu" (click)="$event.stopPropagation()">
-            <mat-icon>more_vert</mat-icon>
-          </button>
-          <mat-menu #agentMenu="matMenu" class="agent-card-menu">
-            <button mat-menu-item (click)="focus.emit(agent)">
-              <mat-icon>terminal</mat-icon>
-              <span>Focus Terminal</span>
-            </button>
-            <button mat-menu-item (click)="viewDetails.emit(agent)">
-              <mat-icon>info</mat-icon>
-              <span>View Details</span>
-            </button>
-          </mat-menu>
-        </div>
-        <div class="card-task" *ngIf="agent.currentTask">{{ agent.currentTask }}</div>
-        <div class="card-line-2">
-          <span class="agent-folder" *ngIf="getFolderName(agent)">{{ getFolderName(agent) }}</span>
-        </div>
-        <div class="card-line-3" *ngIf="agent.currentTool || agent.recentTools?.length">
-          <span class="tool-pill" *ngIf="agent.currentTool">{{ agent.currentTool }}</span>
-          <ng-container *ngIf="!agent.currentTool && agent.recentTools?.length">
-            <span class="tool-pill recent" *ngFor="let tool of agent.recentTools?.slice(-3); trackBy: trackByTool">{{ tool }}</span>
-          </ng-container>
-          <span class="elapsed">{{ getElapsedTime(agent.startTime) }}</span>
-        </div>
-        <div class="card-line-3" *ngIf="!agent.currentTool && !agent.recentTools?.length">
-          <span class="elapsed">{{ getElapsedTime(agent.startTime) }}</span>
-        </div>
-      </div>
-      <div class="empty-column" *ngIf="col.agents.length === 0">
+      <ng-container *ngFor="let node of col.agentNodes; trackBy: trackByNode">
+        <ng-container *ngTemplateOutlet="agentCard; context: { $implicit: node.agent, isChild: false }"></ng-container>
+        <ng-container *ngFor="let child of node.children; trackBy: trackByAgent">
+          <ng-container *ngTemplateOutlet="agentCard; context: { $implicit: child, isChild: true }"></ng-container>
+        </ng-container>
+      </ng-container>
+      <div class="empty-column" *ngIf="col.agentNodes.length === 0">
         No agents
       </div>
     </div>
