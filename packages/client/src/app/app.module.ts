@@ -22,6 +22,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSelectModule } from '@angular/material/select';
+import { MatMenuModule } from '@angular/material/menu';
 
 import { LogViewerComponent } from './log-viewer/log-viewer.component';
 import { ChartsComponent } from './charts/charts.component';
@@ -73,7 +74,8 @@ import { InsightsComponent } from './insights/insights.component';
     MatInputModule,
     MatFormFieldModule,
     MatSlideToggleModule,
-    MatSelectModule
+    MatSelectModule,
+    MatMenuModule
   ],
   providers: [],
   bootstrap: [AppComponent]

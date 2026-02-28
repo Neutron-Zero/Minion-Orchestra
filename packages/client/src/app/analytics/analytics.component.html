@@ -9,7 +9,8 @@
     <app-kanban-board
       [agents]="(agents$ | async) || []"
       (remove)="removeAgent($event)"
-      (focus)="focusAgent($event)">
+      (focus)="focusAgent($event)"
+      (viewDetails)="viewAgentDetails($event)">
     </app-kanban-board>
   </div>
 

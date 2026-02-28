@@ -67,6 +67,31 @@ body {
   cursor: pointer;
 }
 
+// Agent card kebab menu
+.agent-card-menu.mat-mdc-menu-panel {
+  background: #1e252c !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px !important;
+  min-width: 160px !important;
+
+  .mat-mdc-menu-item {
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-size: 13px;
+
+    .mat-icon {
+      color: rgba(255, 255, 255, 0.5);
+      margin-right: 8px;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08) !important;
+    }
+  }
+}
+
 // Global dark theme styling for all components
 h1, h2, h3, h4, h5, h6 {
   color: #ffffff;

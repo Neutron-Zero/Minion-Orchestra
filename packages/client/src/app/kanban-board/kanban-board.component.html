@@ -11,20 +11,33 @@
            [style.borderLeftColor]="getAgentColor(agent.id)">
         <div class="card-line-1">
           <span class="agent-id">{{ getFormattedAgentId(agent.id) }}</span>
-          <span class="elapsed">{{ getElapsedTime(agent.startTime) }}</span>
+          <button class="kebab-btn" [matMenuTriggerFor]="agentMenu" (click)="$event.stopPropagation()">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #agentMenu="matMenu" class="agent-card-menu">
+            <button mat-menu-item (click)="focus.emit(agent)">
+              <mat-icon>terminal</mat-icon>
+              <span>Focus Terminal</span>
+            </button>
+            <button mat-menu-item (click)="viewDetails.emit(agent)">
+              <mat-icon>info</mat-icon>
+              <span>View Details</span>
+            </button>
+          </mat-menu>
         </div>
         <div class="card-task" *ngIf="agent.currentTask">{{ agent.currentTask }}</div>
         <div class="card-line-2">
           <span class="agent-folder" *ngIf="getFolderName(agent)">{{ getFolderName(agent) }}</span>
-          <button class="focus-btn" matTooltip="Focus terminal" (click)="focus.emit(agent); $event.stopPropagation()">
-            <mat-icon>terminal</mat-icon>
-          </button>
         </div>
         <div class="card-line-3" *ngIf="agent.currentTool || agent.recentTools?.length">
           <span class="tool-pill" *ngIf="agent.currentTool">{{ agent.currentTool }}</span>
           <ng-container *ngIf="!agent.currentTool && agent.recentTools?.length">
             <span class="tool-pill recent" *ngFor="let tool of agent.recentTools?.slice(-3); trackBy: trackByTool">{{ tool }}</span>
           </ng-container>
+          <span class="elapsed">{{ getElapsedTime(agent.startTime) }}</span>
+        </div>
+        <div class="card-line-3" *ngIf="!agent.currentTool && !agent.recentTools?.length">
+          <span class="elapsed">{{ getElapsedTime(agent.startTime) }}</span>
         </div>
       </div>
       <div class="empty-column" *ngIf="col.agents.length === 0">

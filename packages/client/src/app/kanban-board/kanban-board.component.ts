@@ -23,6 +23,7 @@ export class KanbanBoardComponent {
   @Output() resume = new EventEmitter<Agent>();
   @Output() remove = new EventEmitter<Agent>();
   @Output() focus = new EventEmitter<Agent>();
+  @Output() viewDetails = new EventEmitter<Agent>();
 
   columns: KanbanColumn[] = [];
   private _agents: Agent[] = [];

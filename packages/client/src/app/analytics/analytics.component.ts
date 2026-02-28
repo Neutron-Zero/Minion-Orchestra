@@ -51,4 +51,8 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
   removeAgent(agent: Agent): void {
     this.agentService.removeAgent(agent.id);
   }
+
+  viewAgentDetails(agent: Agent): void {
+    this.router.navigate(['/agent', agent.id]);
+  }
 }
