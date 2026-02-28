@@ -1,77 +1,20 @@
-<div class="panel agents-panel">
-  <div class="panel-header">
-    <span class="panel-title">ACTIVE AGENTS</span>
-    <div class="segmented-control">
-      <button [class.active]="viewMode === 'list'" (click)="setViewMode('list')">List</button>
-      <button [class.active]="viewMode === 'kanban'" (click)="setViewMode('kanban')">Kanban</button>
-      <button [class.active]="viewMode === 'tree'" (click)="setViewMode('tree')">Tree</button>
-    </div>
-    <span class="panel-count" *ngIf="workingCount > 0">{{ workingCount }} Working</span>
-    <span class="panel-count idle" *ngIf="workingCount === 0">{{ agentCount }} Connected</span>
+<div class="agents-page">
+  <div class="page-header">
+    <span class="page-title">ACTIVE AGENTS</span>
+    <span class="agent-count" *ngIf="workingCount > 0">{{ workingCount }} Working</span>
+    <span class="agent-count idle" *ngIf="workingCount === 0">{{ agentCount }} Connected</span>
   </div>
 
-  <!-- List View -->
-  <div class="agents-list" *ngIf="viewMode === 'list'">
-    <app-agent-card
-      *ngFor="let agent of agents$ | async"
-      [agent]="agent"
-      (pause)="pauseAgent($event)"
-      (resume)="resumeAgent($event)"
-      (remove)="removeAgent($event)">
-    </app-agent-card>
+  <div class="kanban-container">
+    <app-kanban-board
+      [agents]="(agents$ | async) || []"
+      (remove)="removeAgent($event)"
+      (focus)="focusAgent($event)">
+    </app-kanban-board>
   </div>
-
-  <!-- Kanban View -->
-  <app-kanban-board
-    *ngIf="viewMode === 'kanban'"
-    [agents]="(agents$ | async) || []"
-    (remove)="removeAgent($event)"
-    (focus)="focusAgent($event)">
-  </app-kanban-board>
-
-  <!-- Tree View -->
-  <app-agent-tree
-    *ngIf="viewMode === 'tree'"
-    [agents]="(agents$ | async) || []"
-    (remove)="removeAgent($event)"
-    (focus)="focusAgent($event)">
-  </app-agent-tree>
 
   <div *ngIf="(agents$ | async)?.length === 0" class="empty-state">
     <mat-icon>sentiment_dissatisfied</mat-icon>
     <p>No active agents. Start a Claude Code session to see agents here.</p>
-  </div>
-</div>
-
-<!-- Usage Insights -->
-<div class="insights-section">
-  <div class="panel">
-    <div class="panel-header">
-      <span class="panel-title">USAGE INSIGHTS</span>
-    </div>
-    <div class="insights-grid">
-      <!-- Daily Activity Chart -->
-      <div class="insight-card">
-        <h4>Daily Activity</h4>
-        <canvas #dailyCanvas></canvas>
-        <div class="empty-insight" *ngIf="dailyData.length === 0">No data yet</div>
-      </div>
-
-      <!-- Activity Heatmap -->
-      <div class="insight-card heatmap-card">
-        <h4>Activity Heatmap</h4>
-        <div class="heatmap-grid" *ngIf="heatmapData.length > 0">
-          <div class="heatmap-row" *ngFor="let row of heatmapRows">
-            <span class="heatmap-label">{{ row.label }}</span>
-            <div class="heatmap-cell"
-                 *ngFor="let cell of row.cells"
-                 [style.backgroundColor]="getHeatmapColor(cell.count)"
-                 [matTooltip]="cell.label + ': ' + cell.count + ' events'">
-            </div>
-          </div>
-        </div>
-        <div class="empty-insight" *ngIf="heatmapData.length === 0">No data yet</div>
-      </div>
-    </div>
   </div>
 </div>

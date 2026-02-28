@@ -1,0 +1,94 @@
+<div class="agent-detail-page">
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-icon class="spinner">hourglass_empty</mat-icon>
+    <span>Loading agent details...</span>
+  </div>
+
+  <div class="error-state" *ngIf="!loading && error">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ error }}</span>
+    <button mat-button class="retry-btn" (click)="loadAgent()">Retry</button>
+  </div>
+
+  <div *ngIf="!loading && !error && agent">
+
+    <div class="agent-header-card">
+      <div class="header-top-row">
+        <div class="agent-identity">
+          <span class="status-dot" [style.backgroundColor]="getStatusColor(agent.status)"></span>
+          <span class="agent-name">agent-{{ getFormattedAgentId(agent.id) }}</span>
+          <span class="folder-badge" *ngIf="getFolderName(agent.workingDirectory)">
+            {{ getFolderName(agent.workingDirectory) }}
+          </span>
+          <span class="status-badge" [style.backgroundColor]="getStatusColor(agent.status) + '22'"
+                [style.color]="getStatusColor(agent.status)">
+            {{ agent.status }}
+          </span>
+        </div>
+      </div>
+
+      <div class="header-meta">
+        <span class="meta-item" *ngIf="agent.sessionData?.gitBranch">
+          <mat-icon class="meta-icon">call_split</mat-icon>
+          {{ agent.sessionData.gitBranch }}
+        </span>
+        <span class="meta-item" *ngIf="agent.startTime">
+          <mat-icon class="meta-icon">schedule</mat-icon>
+          {{ formatStartTime(agent.startTime) }}
+        </span>
+        <span class="meta-item" *ngIf="duration">
+          <mat-icon class="meta-icon">timer</mat-icon>
+          {{ duration }}
+        </span>
+        <span class="meta-item" *ngIf="agent.pid">
+          <mat-icon class="meta-icon">memory</mat-icon>
+          PID {{ agent.pid }}
+        </span>
+        <span class="meta-item" *ngIf="agent.sessionData?.model">
+          <mat-icon class="meta-icon">smart_toy</mat-icon>
+          {{ agent.sessionData.model }}
+        </span>
+      </div>
+
+      <div class="header-task" *ngIf="agent.currentTask">
+        <span class="task-label">Current Task</span>
+        <span class="task-text">{{ agent.currentTask }}</span>
+      </div>
+
+      <div class="header-tool" *ngIf="agent.currentTool">
+        <span class="tool-label">Active Tool</span>
+        <span class="tool-pill">{{ agent.currentTool }}</span>
+      </div>
+    </div>
+
+    <div class="activity-log-section">
+      <div class="section-header">
+        <h3 class="section-title">Activity Log</h3>
+        <span class="log-count">{{ logs.length }} entries</span>
+      </div>
+
+      <div class="log-list" *ngIf="logs.length > 0">
+        <div class="log-entry" *ngFor="let log of logs; trackBy: trackByLog; let odd = odd" [class.odd]="odd">
+          <span class="log-timestamp">{{ formatTimestamp(log.timestamp) }}</span>
+          <mat-icon class="level-icon"
+                    [style.color]="getLevelIconColor(log.level)">
+            {{ getLevelIcon(log.level) }}
+          </mat-icon>
+          <span class="log-message">
+            <ng-container *ngFor="let part of log._parsed; trackBy: trackByPart">
+              <span *ngIf="part.isTool" class="tool-highlight">{{ part.text }}</span>
+              <ng-container *ngIf="!part.isTool">{{ part.text }}</ng-container>
+            </ng-container>
+          </span>
+        </div>
+      </div>
+
+      <div class="empty-logs" *ngIf="logs.length === 0">
+        <mat-icon>description</mat-icon>
+        <span>No activity logs yet.</span>
+      </div>
+    </div>
+
+  </div>
+</div>

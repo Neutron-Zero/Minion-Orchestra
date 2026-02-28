@@ -29,7 +29,7 @@ sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*", logger=F
 cleanup_service = CleanupService(agent_manager, task_queue, sio)
 session_watcher = SessionWatcher(agent_manager, sio)
 
-VERSION = "1.3.1"
+VERSION = "1.4.4"
 
 @asynccontextmanager
 async def lifespan(app):

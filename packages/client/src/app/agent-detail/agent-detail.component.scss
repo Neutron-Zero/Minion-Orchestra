@@ -1,0 +1,375 @@
+.agent-detail-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  color: #e6edf3;
+}
+
+// Back Button
+.back-button {
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 16px;
+
+  &:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  mat-icon {
+    font-size: 24px;
+  }
+}
+
+// Loading State
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 20px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 15px;
+
+  .spinner {
+    animation: spin 1.5s linear infinite;
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+// Error State
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 20px;
+  color: #f44336;
+  font-size: 15px;
+
+  mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+  }
+
+  .retry-btn {
+    color: #a78bfa;
+    border: 1px solid rgba(124, 58, 237, 0.3);
+    margin-left: 8px;
+
+    &:hover {
+      background: rgba(124, 58, 237, 0.1);
+    }
+  }
+}
+
+// Agent Header Card
+.agent-header-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.agent-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.agent-name {
+  font-size: 22px;
+  font-weight: 600;
+  color: #f1f5f9;
+  letter-spacing: 0.3px;
+}
+
+.folder-badge {
+  font-size: 12px;
+  color: #8b949e;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-weight: 500;
+}
+
+.status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid currentColor;
+}
+
+// Header Meta Row
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #8b949e;
+
+  .meta-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: rgba(255, 255, 255, 0.35);
+  }
+}
+
+// Current Task
+.header-task {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+
+  .task-label {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.35);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .task-text {
+    font-size: 14px;
+    color: #e6edf3;
+    line-height: 1.5;
+  }
+}
+
+// Active Tool
+.header-tool {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .tool-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.35);
+    font-weight: 600;
+  }
+
+  .tool-pill {
+    font-size: 12px;
+    background: rgba(124, 58, 237, 0.15);
+    color: #a78bfa;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+}
+
+// Activity Log Section
+.activity-log-section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.section-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.log-count {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+// Log Entries
+.log-list {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.log-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 20px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  transition: background 0.1s ease;
+
+  &.odd {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+}
+
+.log-timestamp {
+  color: #6e7681;
+  flex-shrink: 0;
+  font-size: 12px;
+  min-width: 100px;
+}
+
+.level-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  position: relative;
+  top: 2px;
+}
+
+.log-message {
+  color: #8b949e;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.tool-highlight {
+  font-size: 10px;
+  background: rgba(124, 58, 237, 0.15);
+  color: #a78bfa;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: inline-block;
+  vertical-align: baseline;
+  line-height: 1.4;
+}
+
+// Empty Logs
+.empty-logs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 60px 20px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 14px;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+// Scrollbar styling
+.log-list {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .agent-detail-page {
+    padding: 12px;
+  }
+
+  .agent-name {
+    font-size: 18px;
+  }
+
+  .header-meta {
+    gap: 12px;
+  }
+
+  .meta-item {
+    font-size: 12px;
+  }
+
+  .log-entry {
+    padding: 8px 12px;
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  .log-timestamp {
+    min-width: 80px;
+    font-size: 11px;
+  }
+
+  .section-header {
+    padding: 12px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .agent-identity {
+    gap: 8px;
+  }
+
+  .agent-header-card {
+    padding: 14px;
+  }
+
+  .header-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

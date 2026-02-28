@@ -1,0 +1,81 @@
+<div class="history-page">
+  <div class="history-header">
+    <h2>Session History</h2>
+    <span class="session-count" *ngIf="total > 0">{{ total }} sessions</span>
+  </div>
+
+  <div class="filter-bar">
+    <mat-form-field appearance="outline" class="filter-field search-field">
+      <mat-label>Search</mat-label>
+      <input matInput [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" placeholder="Agent name, directory...">
+      <mat-icon matSuffix class="clickable-icon" (click)="onSearch()">search</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field status-field">
+      <mat-label>Status</mat-label>
+      <mat-select [(ngModel)]="statusFilter" (selectionChange)="onFilterChange()">
+        <mat-option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field date-field">
+      <mat-label>From</mat-label>
+      <input matInput type="date" [(ngModel)]="sinceDate" (change)="onFilterChange()">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field date-field">
+      <mat-label>To</mat-label>
+      <input matInput type="date" [(ngModel)]="untilDate" (change)="onFilterChange()">
+    </mat-form-field>
+  </div>
+
+  <div class="sessions-table" (scroll)="onScroll($event)">
+    <div class="table-header">
+      <span class="col-status">Status</span>
+      <span class="col-agent">Agent</span>
+      <span class="col-folder">Folder</span>
+      <span class="col-start">Started</span>
+      <span class="col-duration">Duration</span>
+      <span class="col-pid">PID</span>
+    </div>
+
+    <div
+      class="table-row"
+      *ngFor="let session of sessions; trackBy: trackBySession"
+      [class.subagent-row]="isSubagent(session)"
+      (click)="navigateToAgent(session.id)">
+
+      <div class="subagent-line" *ngIf="isSubagent(session)"></div>
+
+      <span class="col-status">
+        <span class="status-dot" [style.backgroundColor]="getStatusColor(session.status)"></span>
+        <span class="status-text">{{ session.status }}</span>
+      </span>
+
+      <span class="col-agent">
+        <span class="agent-name">{{ session.agent_name || session.id }}</span>
+      </span>
+
+      <span class="col-folder" [title]="session.working_directory">
+        {{ getFolderName(session.working_directory) }}
+      </span>
+
+      <span class="col-start">{{ formatTimestamp(session.start_time) }}</span>
+
+      <span class="col-duration">{{ formatDuration(session.start_time, session.end_time) }}</span>
+
+      <span class="col-pid">{{ session.pid || '-' }}</span>
+    </div>
+
+    <div class="empty-state" *ngIf="!loading && sessions.length === 0">
+      <mat-icon>history</mat-icon>
+      <p>No sessions found</p>
+      <p class="hint" *ngIf="searchTerm || statusFilter">Try adjusting your filters</p>
+      <p class="hint" *ngIf="!searchTerm && !statusFilter">Sessions will appear here as agents connect</p>
+    </div>
+
+    <div class="loading-more" *ngIf="loading">
+      Loading...
+    </div>
+  </div>
+</div>

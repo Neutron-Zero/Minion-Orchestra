@@ -1,7 +1,7 @@
 <div class="settings-layout">
   <!-- Section Nav -->
   <nav class="section-nav">
-    <a *ngFor="let section of sections" [class.active]="activeSection === section.key" (click)="scrollToSection(section.key)">
+    <a *ngFor="let section of sections; trackBy: trackBySection" [class.active]="activeSection === section.key" (click)="scrollToSection(section.key)">
       <mat-icon>{{ section.icon }}</mat-icon>
       {{ section.label }}
     </a>
@@ -18,8 +18,8 @@
       </mat-card-header>
       <mat-card-content>
         <p>WebSocket Server:
-          <span class="status-indicator" [class.connected]="connectionStatus$ | async" [class.disconnected]="!(connectionStatus$ | async)">
-            {{ (connectionStatus$ | async) ? 'Connected' : 'Disconnected' }}
+          <span class="status-indicator" [class.connected]="isConnected" [class.disconnected]="!isConnected">
+            {{ isConnected ? 'Connected' : 'Disconnected' }}
           </span>
         </p>
         <p>Server URL: http://localhost:3000</p>

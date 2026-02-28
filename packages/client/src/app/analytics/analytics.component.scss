@@ -1,48 +1,41 @@
-.segmented-control {
-  display: flex;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
-  padding: 2px;
-  gap: 2px;
-
-  button {
-    padding: 4px 12px;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.45);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    line-height: 1.4;
-
-    &:hover {
-      color: rgba(255, 255, 255, 0.7);
-      background: rgba(255, 255, 255, 0.04);
-    }
-
-    &.active {
-      color: #fff;
-      background: rgba(124, 58, 237, 0.4);
-    }
-  }
-}
-
-.panel-count {
-  font-size: 14px;
-  font-weight: 600;
-  color: #4caf50;
-
-  &.idle {
-    color: rgba(255, 255, 255, 0.4);
-  }
-}
-
-.agents-list {
+.agents-page {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  height: calc(100vh - 84px - 28px);
+  overflow: hidden;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  flex-shrink: 0;
+
+  .page-title {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .agent-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4caf50;
+
+    &.idle {
+      color: rgba(255, 255, 255, 0.4);
+    }
+  }
+}
+
+.kanban-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .empty-state {
@@ -60,76 +53,4 @@
   p {
     font-size: 14px;
   }
-}
-
-// Usage Insights
-.insights-section {
-  margin-top: 20px;
-}
-
-.insights-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  padding: 8px 0;
-}
-
-.insight-card {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  padding: 16px;
-  min-height: 200px;
-
-  h4 {
-    margin: 0 0 12px 0;
-    font-size: 13px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.6);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  canvas {
-    max-height: 180px;
-  }
-}
-
-.heatmap-card {
-  overflow-x: auto;
-}
-
-.heatmap-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.heatmap-row {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-
-  .heatmap-label {
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.35);
-    width: 40px;
-    flex-shrink: 0;
-    text-align: right;
-    padding-right: 6px;
-  }
-
-  .heatmap-cell {
-    width: 14px;
-    height: 14px;
-    border-radius: 2px;
-    flex-shrink: 0;
-    cursor: default;
-  }
-}
-
-.empty-insight {
-  text-align: center;
-  padding: 40px 0;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.2);
 }

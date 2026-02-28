@@ -82,12 +82,19 @@ def _log(timestamp: str | None, level: str, message: str, agent_id: str) -> dict
     return {"timestamp": _ts(timestamp), "level": level, "message": message, "agentId": agent_id}
 
 
+async def _emit_and_store_log(sio, timestamp, level, message, agent_id, tool_name=None):
+    """Emit log via Socket.IO and persist to SQLite."""
+    log_entry = _log(timestamp, level, message, agent_id)
+    await sio.emit("log", log_entry)
+    await db.store_log(agent_id, level, message, tool_name, log_entry["timestamp"])
+
+
 async def _handle_session_start(agent, socket_id, event, sio):
     agent.status = "idle"
     if event.timestamp:
         agent.start_time = event.timestamp
     agent.session_data = event.data
-    await sio.emit("log", _log(event.timestamp, "info", f"Session started - Agent ID: {event.agentId}", event.agentId))
+    await _emit_and_store_log(sio, event.timestamp, "info", f"Session started - Agent ID: {event.agentId}", event.agentId)
     if event.response:
         log_hook_data(event.eventType, event.model_dump(), event.response)
 
@@ -98,7 +105,7 @@ async def _handle_user_prompt_submit(agent, socket_id, event, sio):
     agent.status = "working"
     agent.current_task = truncated
     task_queue.increment("inProgress")
-    await sio.emit("log", _log(event.timestamp, "info", f"User: {truncated}", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "info", f"User: {truncated}", event.agentId)
 
 
 async def _handle_pre_tool_use(agent, socket_id, event, sio):
@@ -106,6 +113,7 @@ async def _handle_pre_tool_use(agent, socket_id, event, sio):
     tool_name = data.get("tool_name", "Unknown")
     tool_input = data.get("tool_input", {})
     tool_description = tool_input.get("description") if isinstance(tool_input, dict) else None
+    agent.status = "working"
     agent_manager.update_agent_tool(event.agentId, tool_name, tool_description)
 
     if tool_name == "TodoWrite" and isinstance(tool_input, dict):
@@ -115,7 +123,7 @@ async def _handle_pre_tool_use(agent, socket_id, event, sio):
             active_form = in_progress.get("activeForm") or in_progress.get("content")
             agent.current_task = active_form
             agent_manager.set_agent(socket_id, agent)
-            await sio.emit("log", _log(event.timestamp, "info", active_form, event.agentId))
+            await _emit_and_store_log(sio,event.timestamp, "info", active_form, event.agentId)
 
     # Build message: always start with tool name
     if tool_description:
@@ -129,7 +137,7 @@ async def _handle_pre_tool_use(agent, socket_id, event, sio):
             msg = f"Using {tool_name}"
     else:
         msg = f"Using {tool_name}"
-    await sio.emit("log", _log(event.timestamp, "info", msg, event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "info", msg, event.agentId)
 
 
 async def _handle_post_tool_use(agent, socket_id, event, sio):
@@ -147,7 +155,7 @@ async def _handle_post_tool_use(agent, socket_id, event, sio):
             suffix = f": {file_path.split('/')[-1]}" if "/" in str(file_path) else f": {file_path}"
 
     msg = f"Completed {tool}{suffix}" if success else f"Failed {tool}{suffix}: {data.get('error')}"
-    await sio.emit("log", _log(event.timestamp, level, msg, event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, level, msg, event.agentId)
 
 
 async def _handle_subagent_start(agent, socket_id, event, sio):
@@ -159,7 +167,7 @@ async def _handle_subagent_start(agent, socket_id, event, sio):
         type="subagent", status="working", current_task=description,
     )
     agent_manager.set_agent(f"hook-{subagent_id}", subagent)
-    await sio.emit("log", _log(event.timestamp, "info", f"Subagent started: {description}", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "info", f"Subagent started: {description}", event.agentId)
     await broadcast_agent_update(sio, agent_manager)
 
 
@@ -177,7 +185,7 @@ async def _handle_subagent_stop(agent, socket_id, event, sio):
             await broadcast_agent_update(sio, agent_manager)
         asyncio.create_task(_remove())
 
-    await sio.emit("log", _log(event.timestamp, "info", "Subagent completed", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "info", "Subagent completed", event.agentId)
     await broadcast_agent_update(sio, agent_manager)
 
 
@@ -189,13 +197,13 @@ async def _handle_stop(agent, socket_id, event, sio):
     if task_queue.get_queue()["inProgress"] > 0:
         task_queue.decrement("inProgress")
     task_queue.increment("completed")
-    await sio.emit("log", _log(event.timestamp, "info", "Session completed", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "info", "Session completed", event.agentId)
 
 
 async def _handle_permission_request(agent, socket_id, event, sio):
     tool_name = (event.data or {}).get("tool_name", "Unknown")
     agent.status = "waiting"
-    await sio.emit("log", _log(event.timestamp, "warning", f"Permission requested for {tool_name}", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "warning", f"Permission requested for {tool_name}", event.agentId)
 
 
 async def _handle_post_tool_use_failure(agent, socket_id, event, sio):
@@ -208,7 +216,7 @@ async def _handle_post_tool_use_failure(agent, socket_id, event, sio):
         task_queue.decrement("inProgress")
         task_queue.increment("failed")
     suffix = " (interrupted)" if is_interrupt else ""
-    await sio.emit("log", _log(event.timestamp, "error", f"{failed_tool} failed: {fail_error}{suffix}", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "error", f"{failed_tool} failed: {fail_error}{suffix}", event.agentId)
 
 
 async def _handle_session_end(agent, socket_id, event, sio):
@@ -218,7 +226,8 @@ async def _handle_session_end(agent, socket_id, event, sio):
     agent.current_tool = None
     if task_queue.get_queue()["inProgress"] > 0:
         task_queue.decrement("inProgress")
-    await sio.emit("log", _log(event.timestamp, "info", f"Session ended ({reason})", event.agentId))
+    await _emit_and_store_log(sio, event.timestamp, "info", f"Session ended ({reason})", event.agentId)
+    await db.update_session_status(event.agentId, "offline", end_time=_ts(event.timestamp))
 
     async def _remove():
         await asyncio.sleep(10)
@@ -228,19 +237,19 @@ async def _handle_session_end(agent, socket_id, event, sio):
 
 
 async def _handle_pre_compact(agent, socket_id, event, sio):
-    await sio.emit("log", _log(event.timestamp, "debug", "Compacting context...", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "debug", "Compacting context...", event.agentId)
 
 
 async def _handle_notification(agent, socket_id, event, sio):
     data = event.data or {}
-    await sio.emit("log", _log(event.timestamp, data.get("level", "info"), data.get("message", "Notification"), event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, data.get("level", "info"), data.get("message", "Notification"), event.agentId)
 
 
 async def _handle_teammate_idle(agent, socket_id, event, sio):
     data = event.data or {}
     teammate = data.get("teammate_name", "Unknown")
     team = data.get("team_name", "")
-    await sio.emit("log", _log(event.timestamp, "info", f"Teammate idle: {teammate}{f' ({team})' if team else ''}", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "info", f"Teammate idle: {teammate}{f' ({team})' if team else ''}", event.agentId)
 
 
 async def _handle_task_completed(agent, socket_id, event, sio):
@@ -248,29 +257,29 @@ async def _handle_task_completed(agent, socket_id, event, sio):
     task_queue.increment("completed")
     if task_queue.get_queue()["inProgress"] > 0:
         task_queue.decrement("inProgress")
-    await sio.emit("log", _log(event.timestamp, "info", f"Task completed: {subject}", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "info", f"Task completed: {subject}", event.agentId)
 
 
 async def _handle_config_change(agent, socket_id, event, sio):
     data = event.data or {}
     source = data.get("source", "unknown")
     fp = data.get("file_path", "")
-    await sio.emit("log", _log(event.timestamp, "debug", f"Config changed: {source}{f' ({fp})' if fp else ''}", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "debug", f"Config changed: {source}{f' ({fp})' if fp else ''}", event.agentId)
 
 
 async def _handle_worktree_create(agent, socket_id, event, sio):
     name = (event.data or {}).get("name", "unnamed")
-    await sio.emit("log", _log(event.timestamp, "info", f"Worktree created: {name}", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "info", f"Worktree created: {name}", event.agentId)
 
 
 async def _handle_worktree_remove(agent, socket_id, event, sio):
     wt_path = (event.data or {}).get("worktree_path", "unknown")
-    await sio.emit("log", _log(event.timestamp, "info", f"Worktree removed: {wt_path}", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "info", f"Worktree removed: {wt_path}", event.agentId)
 
 
 async def _handle_default(agent, socket_id, event, sio):
     data_str = json.dumps(event.data or {}, default=str)[:100]
-    await sio.emit("log", _log(event.timestamp, "debug", f"{event.eventType}: {data_str}", event.agentId))
+    await _emit_and_store_log(sio,event.timestamp, "debug", f"{event.eventType}: {data_str}", event.agentId)
 
 
 EVENT_HANDLERS = {
@@ -337,6 +346,14 @@ async def hook_endpoint(event: HookEvent, request: Request):
             event_type=event.eventType, agent_id=event.agentId,
             session_id=event.agentId, timestamp=_ts(event.timestamp),
             message=prompt_msg, metadata=event.data,
+        )
+
+        # Upsert session in database (every hook event keeps session record current)
+        await db.store_session(
+            id=event.agentId, agent_name=agent.name, status=agent.status,
+            working_directory=agent.working_directory,
+            start_time=agent.start_time.isoformat() if agent.start_time else _ts(event.timestamp),
+            pid=agent.pid, metadata=agent.session_data,
         )
 
         # Fire native notifications for key events
@@ -420,7 +437,7 @@ async def agent_endpoint(request: Request):
                     tool_name = data.get("tool_name")
                     if tool_name:
                         agent_manager.update_agent_tool(agent.id, tool_name, tool_desc)
-                        await sio.emit("log", _log(None, "info", tool_desc or f"Using {tool_name}", agent.id))
+                        await _emit_and_store_log(sio,None, "info", tool_desc or f"Using {tool_name}", agent.id)
                     await broadcast_agent_update(sio, agent_manager)
                 elif hook_event_name == "PostToolUse":
                     agent_manager.clear_agent_tool(agent.id)
@@ -429,13 +446,13 @@ async def agent_endpoint(request: Request):
                     prompt = data.get("prompt", "New prompt received")
                     truncated = prompt[:100] + ("..." if len(prompt) > 100 else "")
                     agent_manager.update_agent_task(agent.id, truncated)
-                    await sio.emit("log", _log(None, "info", f"User prompt: {prompt[:50]}{'...' if len(prompt) > 50 else ''}", agent.id))
+                    await _emit_and_store_log(sio,None, "info", f"User prompt: {prompt[:50]}{'...' if len(prompt) > 50 else ''}", agent.id)
                     await broadcast_agent_update(sio, agent_manager)
                 elif hook_event_name in ("Stop", "SubagentStop"):
                     agent_manager.update_agent_status(agent.id, "completed")
                     agent_manager.clear_agent_tool(agent.id)
                     msg = "Subagent completed task" if hook_event_name == "SubagentStop" else "Task completed"
-                    await sio.emit("log", _log(None, "info", msg, agent.id))
+                    await _emit_and_store_log(sio,None, "info", msg, agent.id)
                     await broadcast_agent_update(sio, agent_manager)
                 return {"success": True}
 
@@ -670,13 +687,20 @@ async def insights_daily(days: int = 30):
 @router.get("/api/insights/models")
 async def insights_models():
     try:
-        events = await db.get_events(limit=10000, event_type="SessionStart")
-        models: dict[str, int] = {}
-        for event in events:
-            meta = event.get("metadata") or {}
-            model = meta.get("model") or meta.get("version") or "unknown"
-            models[model] = models.get(model, 0) + 1
-        return {"success": True, "models": [{"model": m, "count": c} for m, c in models.items()]}
+        # Get CLI versions from running processes
+        import psutil as _psutil
+        versions: dict[str, int] = {}
+        for proc in _psutil.process_iter(["pid", "cmdline", "name"]):
+            try:
+                cmdline = proc.info.get("cmdline") or []
+                if cmdline and cmdline[0].rstrip("/").split("/")[-1] == "claude":
+                    ver = proc.info.get("name", "unknown")
+                    versions[f"Claude {ver}"] = versions.get(f"Claude {ver}", 0) + 1
+            except (_psutil.NoSuchProcess, _psutil.AccessDenied):
+                pass
+        if not versions:
+            versions["unknown"] = 0
+        return {"success": True, "models": [{"model": m, "count": c} for m, c in versions.items()]}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -704,9 +728,9 @@ async def insights_heatmap():
 async def get_plans():
     import glob
     import os
-    plans_dir = os.path.expanduser("~/.claude")
+    plans_dir = os.path.expanduser("~/.claude/plans")
     results = []
-    for plan_file in glob.glob(os.path.join(plans_dir, "**", "*.plan.md"), recursive=True):
+    for plan_file in glob.glob(os.path.join(plans_dir, "*.md")):
         try:
             with open(plan_file, "r") as f:
                 content = f.read()
@@ -722,3 +746,99 @@ async def get_plans():
             pass
     results.sort(key=lambda p: p["modified"], reverse=True)
     return {"success": True, "plans": results}
+
+
+# ---------------------------------------------------------------------------
+# Logs Query Endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/api/logs")
+async def get_logs(search: str | None = None, agent_id: str | None = None,
+                   level: str | None = None, since: str | None = None,
+                   until: str | None = None, limit: int = 200, offset: int = 0):
+    try:
+        logs = await db.get_logs(limit=limit, agent_id=agent_id, level=level, since=since)
+        # Apply search filter in Python (SQLite doesn't have great full-text for this)
+        if search:
+            term = search.lower()
+            logs = [l for l in logs if term in (l.get("message", "") or "").lower()]
+        if until:
+            logs = [l for l in logs if l.get("timestamp", "") <= until]
+        # Apply offset for pagination
+        logs = logs[offset:offset + limit]
+        return {"success": True, "logs": logs, "count": len(logs)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Agent Detail Endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/api/agents/{agent_id}")
+async def get_agent_detail(agent_id: str):
+    try:
+        # Try live agent first
+        agent, _ = agent_manager.find_agent_by_id(agent_id)
+        agent_data = None
+        if agent:
+            agent_data = agent.model_dump(by_alias=True, mode="json")
+
+        # Get from DB if not live
+        if not agent_data:
+            sessions = await db.get_sessions()
+            for s in sessions:
+                if s.get("id") == agent_id:
+                    agent_data = s
+                    break
+
+        # Get logs for this agent
+        logs = await db.get_logs(limit=500, agent_id=agent_id)
+
+        # Get events for this agent
+        events = await db.get_events(limit=200, agent_id=agent_id)
+
+        return {
+            "success": True,
+            "agent": agent_data,
+            "logs": logs,
+            "events": events,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# History Endpoint (all sessions)
+# ---------------------------------------------------------------------------
+
+@router.get("/api/history")
+async def get_history(search: str | None = None, status: str | None = None,
+                      cwd: str | None = None, since: str | None = None,
+                      until: str | None = None, limit: int = 50, offset: int = 0):
+    try:
+        sessions = await db.get_sessions(status=status)
+
+        # Apply filters
+        if search:
+            term = search.lower()
+            sessions = [s for s in sessions if
+                        term in (s.get("agent_name", "") or "").lower() or
+                        term in (s.get("working_directory", "") or "").lower() or
+                        term in (s.get("id", "") or "").lower()]
+        if cwd:
+            sessions = [s for s in sessions if cwd.lower() in (s.get("working_directory", "") or "").lower()]
+        if since:
+            sessions = [s for s in sessions if (s.get("start_time", "") or "") >= since]
+        if until:
+            sessions = [s for s in sessions if (s.get("start_time", "") or "") <= until]
+
+        # Sort newest first
+        sessions.sort(key=lambda s: s.get("start_time", "") or "", reverse=True)
+
+        total = len(sessions)
+        sessions = sessions[offset:offset + limit]
+
+        return {"success": True, "sessions": sessions, "total": total}
+    except Exception as e:
+        return {"success": False, "error": str(e)}

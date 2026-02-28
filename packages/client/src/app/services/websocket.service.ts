@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import { Observable, Subject, BehaviorSubject } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
+import { environment } from '../../environments/environment';
 
 export interface AgentMessage {
   type: 'agent_update' | 'task_update' | 'log' | 'metrics' | 'error' | 'agent_disconnect' | 'stop';
@@ -12,27 +13,23 @@ export interface AgentMessage {
 @Injectable({
   providedIn: 'root'
 })
-export class WebsocketService {
+export class WebsocketService implements OnDestroy {
   private socket?: Socket;
   private messagesSubject = new Subject<AgentMessage>();
   private connectionStatus = new BehaviorSubject<boolean>(false);
-  
+
   messages$ = this.messagesSubject.asObservable();
   isConnected$ = this.connectionStatus.asObservable();
 
-  constructor() { 
-    console.log('WebsocketService constructor called');
-  }
-
-  connect(url: string = 'http://localhost:3000'): void {
+  connect(url: string = environment.serverUrl): void {
     if (this.socket?.connected) {
-      console.log('WebSocket already connected, skipping');
       return;
     }
-    
+
     if (this.socket) {
-      console.log('Disconnecting existing socket before reconnecting');
+      this.socket.removeAllListeners();
       this.socket.disconnect();
+      this.socket = undefined;
     }
 
     this.socket = io(url, {
@@ -43,13 +40,11 @@ export class WebsocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('WebSocket connected');
       this.connectionStatus.next(true);
       this.socket?.emit('subscribe', { type: 'agent_monitor' });
     });
 
     this.socket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
       this.connectionStatus.next(false);
     });
 
@@ -117,9 +112,17 @@ export class WebsocketService {
 
   disconnect(): void {
     if (this.socket) {
+      this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = undefined;
     }
+    this.connectionStatus.next(false);
+  }
+
+  ngOnDestroy(): void {
+    this.disconnect();
+    this.messagesSubject.complete();
+    this.connectionStatus.complete();
   }
 
   emit(event: string, data: any): void {
@@ -128,7 +131,6 @@ export class WebsocketService {
     }
   }
 
-  // Task management methods
   pauseAgent(agentId: string): void {
     this.emit('pause_agent', { agentId });
   }

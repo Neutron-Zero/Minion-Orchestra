@@ -8,7 +8,7 @@
     </div>
     <div class="plan-list">
       <div class="plan-item"
-           *ngFor="let plan of plans"
+           *ngFor="let plan of plans; trackBy: trackByPlan"
            [class.selected]="selectedPlan === plan"
            (click)="selectPlan(plan)">
         <mat-icon class="plan-icon">description</mat-icon>

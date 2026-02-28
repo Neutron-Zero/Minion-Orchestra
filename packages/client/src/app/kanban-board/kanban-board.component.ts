@@ -84,11 +84,21 @@ export class KanbanBoardComponent {
     return `${minutes}m ${pad(seconds)}s`;
   }
 
+  getCountTextColor(bgColor: string): string {
+    // Yellow/light backgrounds need dark text
+    if (bgColor === '#ffc107' || bgColor === '#ffeb3b') return '#1a1a1a';
+    return '#fff';
+  }
+
   trackByColumn(index: number, col: KanbanColumn): string {
     return col.key;
   }
 
   trackByAgent(index: number, agent: Agent): string {
     return agent.id;
+  }
+
+  trackByTool(index: number, tool: string): string {
+    return tool;
   }
 }

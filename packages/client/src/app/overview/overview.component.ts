@@ -1,94 +1,10 @@
-import { Component, OnInit } from '@angular/core';
-import { AgentMonitorService, Agent, TaskQueue } from '../services/agent-monitor.service';
-import { Observable } from 'rxjs';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-overview',
   templateUrl: './overview.component.html',
-  styleUrls: ['./overview.component.scss']
+  styleUrls: ['./overview.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class OverviewComponent implements OnInit {
-  agents$: Observable<Agent[]>;
-  taskQueue$: Observable<TaskQueue>;
-  viewMode: 'list' | 'kanban' | 'tree' = 'list';
-
-  constructor(private agentService: AgentMonitorService) {
-    this.agents$ = this.agentService.getAgents();
-    this.taskQueue$ = this.agentService.getTaskQueue();
-    const saved = localStorage.getItem('overview-view-mode');
-    if (saved === 'list' || saved === 'kanban' || saved === 'tree') {
-      this.viewMode = saved;
-    }
-  }
-
-  ngOnInit(): void {
-  }
-
-  getStatusColor(status: string): string {
-    switch(status) {
-      case 'working': return 'primary';
-      case 'completed': return 'accent';
-      case 'failed': return 'warn';
-      case 'paused': return 'warn';
-      default: return '';
-    }
-  }
-
-  getStatusIcon(status: string): string {
-    switch(status) {
-      case 'working': return 'engineering';
-      case 'completed': return 'check_circle';
-      case 'failed': return 'error';
-      case 'paused': return 'pause_circle';
-      default: return 'pending';
-    }
-  }
-
-  getProgressColor(progress: number | undefined): string {
-    if (!progress) return 'primary';
-    if (progress === 100) return 'accent';
-    if (progress > 75) return 'primary';
-    return 'primary';
-  }
-
-  getElapsedTime(startTime?: Date | string): string {
-    if (!startTime) return '-';
-    const startDate = new Date(startTime);
-    if (isNaN(startDate.getTime())) return '-';
-    const elapsed = Date.now() - startDate.getTime();
-    const minutes = Math.floor(elapsed / 60000);
-    const seconds = Math.floor((elapsed % 60000) / 1000);
-    return `${minutes}m ${seconds}s`;
-  }
-
-  pauseAgent(agent: Agent): void {
-    this.agentService.pauseAgent(agent.id);
-  }
-
-  resumeAgent(agent: Agent): void {
-    this.agentService.resumeAgent(agent.id);
-  }
-
-  removeAgent(agent: Agent): void {
-    this.agentService.removeAgent(agent.id);
-  }
-
-  clearAllAgents(): void {
-    this.agentService.clearAllAgents();
-  }
-
-  focusAgent(agent: Agent): void {
-    this.agentService.focusAgent(agent.id);
-  }
-
-  setViewMode(mode: 'list' | 'kanban' | 'tree'): void {
-    this.viewMode = mode;
-    localStorage.setItem('overview-view-mode', mode);
-  }
-
-  // Refresh removed - using real-time WebSocket updates instead
-
-  getFormattedAgentId(id: string): string {
-    return this.agentService.getFormattedAgentId(id);
-  }
+export class OverviewComponent {
 }

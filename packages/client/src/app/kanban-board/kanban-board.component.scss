@@ -1,9 +1,16 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .kanban-board {
   display: flex;
   gap: 12px;
   overflow-x: auto;
   padding-bottom: 8px;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .kanban-column {
@@ -15,6 +22,7 @@
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .column-header {
@@ -24,6 +32,7 @@
   padding: 10px 12px;
   border-top: 3px solid;
   background: rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
 
   .column-label {
     font-size: 12px;
@@ -36,7 +45,6 @@
   .column-count {
     font-size: 11px;
     font-weight: 700;
-    color: #fff;
     padding: 1px 7px;
     border-radius: 10px;
     min-width: 20px;
@@ -51,12 +59,13 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-height: 0;
 }
 
 .kanban-card {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 6px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-left: 3px solid;
   transition: background 0.15s ease;
 
@@ -64,80 +73,106 @@
     background: rgba(255, 255, 255, 0.08);
   }
 
-  .card-header {
+  .card-line-1 {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
+    justify-content: space-between;
+    margin-bottom: 2px;
 
     .agent-id {
       font-size: 12px;
       font-weight: 600;
       color: #f1f5f9;
-    }
-
-    .agent-folder {
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.5);
-      background: rgba(255, 255, 255, 0.06);
-      padding: 1px 6px;
-      border-radius: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .elapsed {
       font-size: 11px;
       color: rgba(255, 255, 255, 0.4);
-      margin-left: auto;
+      flex-shrink: 0;
+      margin-left: 8px;
     }
   }
 
   .card-task {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 4px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 2px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .card-tool {
-    margin-bottom: 4px;
-
-    .tool-pill {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 500;
-      color: #a78bfa;
-      background: rgba(124, 58, 237, 0.15);
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-  }
-
-  .card-actions {
+  .card-line-2 {
     display: flex;
-    justify-content: flex-end;
-    gap: 2px;
-    margin-top: 4px;
-    opacity: 0;
-    transition: opacity 0.15s ease;
+    align-items: center;
+    gap: 6px;
 
-    button {
-      width: 24px;
-      height: 24px;
-      line-height: 24px;
+    .agent-folder {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 1px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .focus-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      border-radius: 3px;
+      cursor: pointer;
+      padding: 0;
+      margin-left: auto;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
 
       mat-icon {
-        font-size: 14px;
-        width: 14px;
-        height: 14px;
-        color: rgba(255, 255, 255, 0.5);
+        font-size: 13px;
+        width: 13px;
+        height: 13px;
+        color: rgba(255, 255, 255, 0.3);
+      }
+
+      &:hover mat-icon {
+        color: rgba(255, 255, 255, 0.7);
       }
     }
   }
 
-  &:hover .card-actions {
-    opacity: 1;
+  .card-line-3 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+
+    .tool-pill {
+      font-size: 10px;
+      font-weight: 500;
+      color: #a78bfa;
+      background: rgba(124, 58, 237, 0.15);
+      padding: 1px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+
+      &.recent {
+        color: rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.06);
+      }
+    }
   }
 }
 

@@ -1,53 +1,65 @@
-import { Component, OnInit, Input, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Component, OnInit, OnDestroy, Input, ViewChild, ElementRef, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { AgentMonitorService, LogEntry } from '../services/agent-monitor.service';
+
+interface ParsedToolMessage {
+  before: string;
+  tool: string;
+  after: string;
+}
+
+interface DisplayLog extends LogEntry {
+  _formattedTime: string;
+  _formattedAgent: string;
+  _agentName: string;
+  _agentColor: string;
+  _toolParsed: ParsedToolMessage | null;
+}
 
 @Component({
   selector: 'app-log-viewer',
   templateUrl: './log-viewer.component.html',
-  styleUrls: ['./log-viewer.component.scss']
+  styleUrls: ['./log-viewer.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class LogViewerComponent implements OnInit, AfterViewChecked {
+export class LogViewerComponent implements OnInit, OnDestroy {
   @Input() agentId?: string;
   @Input() maxHeight: string = '400px';
   @ViewChild('scrollContainer') private scrollContainer?: ElementRef;
-  
-  logs$: Observable<LogEntry[]>;
-  filteredLogs: LogEntry[] = [];
-  autoScroll = true;
+
+  filteredLogs: DisplayLog[] = [];
   searchTerm = '';
   levelFilter = 'all';
   isConnected = false;
 
-  constructor(private agentService: AgentMonitorService) {
-    this.logs$ = this.agentService.getLogs();
-    this.agentService.isConnected().subscribe(connected => {
-      this.isConnected = connected;
-    });
-  }
+  private allLogs: LogEntry[] = [];
+  private sub?: Subscription;
+  private connSub?: Subscription;
+  private readonly MAX_DISPLAY = 500;
+  private readonly toolPattern = /\b(Read|Write|Edit|Bash|Glob|Grep|Task|WebFetch|WebSearch|NotebookEdit)\b/;
+
+  constructor(private agentService: AgentMonitorService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
-    if (this.agentId) {
-      this.logs$ = this.agentService.getAgentLogs(this.agentId);
-    }
-    
-    // Subscribe to logs and apply filters
-    this.logs$.subscribe(logs => {
-      this.applyFilters(logs);
+    this.connSub = this.agentService.isConnected().subscribe(connected => {
+      this.isConnected = connected;
+      this.cdr.markForCheck();
+    });
+
+    const logs$ = this.agentId
+      ? this.agentService.getAgentLogs(this.agentId)
+      : this.agentService.getLogs();
+
+    this.sub = logs$.subscribe(logs => {
+      this.allLogs = logs;
+      this.applyFilters();
+      this.cdr.markForCheck();
     });
   }
 
-  ngAfterViewChecked() {
-    if (this.autoScroll) {
-      this.scrollToBottom();
-    }
-  }
-
-  scrollToBottom(): void {
-    if (this.scrollContainer) {
-      const element = this.scrollContainer.nativeElement;
-      element.scrollTop = element.scrollHeight;
-    }
+  ngOnDestroy(): void {
+    this.sub?.unsubscribe();
+    this.connSub?.unsubscribe();
   }
 
   getLogClass(level: string): string {
@@ -55,7 +67,7 @@ export class LogViewerComponent implements OnInit, AfterViewChecked {
   }
 
   getLogIcon(level: string): string {
-    switch(level) {
+    switch (level) {
       case 'error': return 'error';
       case 'warning': return 'warning';
       case 'info': return 'info';
@@ -64,53 +76,45 @@ export class LogViewerComponent implements OnInit, AfterViewChecked {
     }
   }
 
-  formatTimestamp(date: Date): string {
-    return new Date(date).toLocaleTimeString('en-GB', { hour12: false });
-  }
-
-  toggleAutoScroll(): void {
-    this.autoScroll = !this.autoScroll;
-  }
-
   clearLogs(): void {
     this.agentService.clearLogs();
   }
-  
-  applyFilters(logs: LogEntry[]): void {
-    let filtered = [...logs];
-    
-    // Apply level filter
+
+  applyFilters(): void {
+    let filtered = this.allLogs;
+
     if (this.levelFilter !== 'all') {
       filtered = filtered.filter(log => log.level === this.levelFilter);
     }
-    
-    // Apply search filter
+
     if (this.searchTerm) {
       const term = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(log => 
+      filtered = filtered.filter(log =>
         log.message.toLowerCase().includes(term) ||
         log.agentId.toLowerCase().includes(term)
       );
     }
-    
-    this.filteredLogs = filtered;
+
+    this.filteredLogs = filtered.slice(-this.MAX_DISPLAY).reverse().map(log => this.enrichLog(log));
   }
-  
+
   onSearchChange(term: string): void {
     this.searchTerm = term;
-    this.logs$.subscribe(logs => this.applyFilters(logs));
+    this.applyFilters();
+    this.cdr.markForCheck();
   }
-  
+
   onLevelFilterChange(level: string): void {
     this.levelFilter = level;
-    this.logs$.subscribe(logs => this.applyFilters(logs));
+    this.applyFilters();
+    this.cdr.markForCheck();
   }
-  
+
   exportLogs(format: 'json' | 'csv'): void {
-    const data = format === 'json' 
+    const data = format === 'json'
       ? JSON.stringify(this.filteredLogs, null, 2)
       : this.convertToCSV(this.filteredLogs);
-    
+
     const blob = new Blob([data], { type: format === 'json' ? 'application/json' : 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -119,38 +123,34 @@ export class LogViewerComponent implements OnInit, AfterViewChecked {
     link.click();
     window.URL.revokeObjectURL(url);
   }
-  
-  private convertToCSV(logs: LogEntry[]): string {
-    const headers = 'Timestamp,Level,Agent ID,Message\n';
-    const rows = logs.map(log => 
-      `"${log.timestamp}","${log.level}","${this.getFormattedAgentId(log.agentId)}","${log.message.replace(/"/g, '""')}"`
-    ).join('\n');
-    return headers + rows;
+
+  trackByLog(index: number, log: DisplayLog): string {
+    return log._formattedTime + log.agentId + log.message;
   }
 
-  getFormattedAgentId(id: string): string {
-    return this.agentService.getFormattedAgentId(id).toUpperCase();
-  }
-
-  getAgentName(agentId: string): string {
+  private enrichLog(log: LogEntry): DisplayLog {
+    const date = new Date(log.timestamp);
     const agents = this.agentService.getAgentsSnapshot();
-    const agent = agents.find(a => a.id === agentId);
-    if (!agent) return '';
-    if (agent.workingDirectory) {
+    const agent = agents.find(a => a.id === log.agentId);
+    let agentName = '';
+    if (agent?.workingDirectory) {
       const parts = agent.workingDirectory.split('/').filter((p: string) => p);
-      return parts[parts.length - 1] || '';
+      agentName = parts[parts.length - 1] || '';
+    } else if (agent?.name) {
+      agentName = agent.name;
     }
-    return agent.name || '';
+
+    return {
+      ...log,
+      _formattedTime: date.toLocaleTimeString('en-GB', { hour12: false }),
+      _formattedAgent: this.agentService.getFormattedAgentId(log.agentId).toUpperCase(),
+      _agentName: agentName,
+      _agentColor: this.agentService.getAgentColor(log.agentId) || '#E53E3E',
+      _toolParsed: this.parseToolMessage(log.message)
+    };
   }
 
-  getAgentColor(agentId: string): string {
-    if (!agentId) return '#E53E3E';
-    return this.agentService.getAgentColor(agentId) || '#E53E3E';
-  }
-
-  private toolPattern = /\b(Read|Write|Edit|Bash|Glob|Grep|Task|WebFetch|WebSearch|NotebookEdit)\b/;
-
-  parseToolMessage(message: string): { before: string; tool: string; after: string } | null {
+  private parseToolMessage(message: string): ParsedToolMessage | null {
     if (!message) return null;
     const match = message.match(this.toolPattern);
     if (!match) return null;
@@ -161,12 +161,11 @@ export class LogViewerComponent implements OnInit, AfterViewChecked {
     };
   }
 
-  getLogBackgroundColor(agentId: string): string {
-    const color = this.getAgentColor(agentId);
-    if (!color || color.length < 7) return 'rgba(229, 62, 62, 0.08)';
-    const r = parseInt(color.slice(1, 3), 16);
-    const g = parseInt(color.slice(3, 5), 16);
-    const b = parseInt(color.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, 0.08)`;
+  private convertToCSV(logs: DisplayLog[]): string {
+    const headers = 'Timestamp,Level,Agent ID,Message\n';
+    const rows = logs.map(log =>
+      `"${log.timestamp}","${log.level}","${log._formattedAgent}","${log.message.replace(/"/g, '""')}"`
+    ).join('\n');
+    return headers + rows;
   }
 }

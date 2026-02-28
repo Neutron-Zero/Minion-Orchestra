@@ -1,4 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../environments/environment';
 
 interface Plan {
   path: string;
@@ -11,34 +13,40 @@ interface Plan {
 @Component({
   selector: 'app-plans-viewer',
   templateUrl: './plans-viewer.component.html',
-  styleUrls: ['./plans-viewer.component.scss']
+  styleUrls: ['./plans-viewer.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PlansViewerComponent implements OnInit {
   plans: Plan[] = [];
   selectedPlan: Plan | null = null;
   loading = false;
-  private serverUrl = 'http://localhost:3000';
+
+  constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.loadPlans();
   }
 
-  async loadPlans(): Promise<void> {
+  loadPlans(): void {
     this.loading = true;
-    try {
-      const response = await fetch(`${this.serverUrl}/api/plans`);
-      const data = await response.json();
-      if (data.success) {
-        this.plans = data.plans || [];
-        if (this.plans.length > 0 && !this.selectedPlan) {
-          this.selectedPlan = this.plans[0];
+    this.cdr.markForCheck();
+
+    this.http.get<any>(`${environment.serverUrl}/api/plans`).subscribe({
+      next: (data) => {
+        if (data.success) {
+          this.plans = data.plans || [];
+          if (this.plans.length > 0 && !this.selectedPlan) {
+            this.selectedPlan = this.plans[0];
+          }
         }
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loading = false;
+        this.cdr.markForCheck();
       }
-    } catch (error) {
-      console.error('Error loading plans:', error);
-    } finally {
-      this.loading = false;
-    }
+    });
   }
 
   selectPlan(plan: Plan): void {
@@ -57,6 +65,10 @@ export class PlansViewerComponent implements OnInit {
   }
 
   getShortName(name: string): string {
-    return name.replace('.plan.md', '');
+    return name.replace('.md', '');
+  }
+
+  trackByPlan(index: number, plan: Plan): string {
+    return plan.path;
   }
 }

@@ -1,11 +1,11 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { HttpClientModule } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { AgentDashboardComponent } from './agent-dashboard/agent-dashboard.component';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -22,38 +22,39 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSelectModule } from '@angular/material/select';
+
 import { LogViewerComponent } from './log-viewer/log-viewer.component';
 import { ChartsComponent } from './charts/charts.component';
-import { SettingsComponent } from './settings/settings.component';
 import { OverviewComponent } from './overview/overview.component';
 import { LogsComponent } from './logs/logs.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { SettingsPageComponent } from './settings-page/settings-page.component';
-import { AgentCardComponent } from './agent-card/agent-card.component';
 import { KanbanBoardComponent } from './kanban-board/kanban-board.component';
-import { AgentTreeComponent } from './agent-tree/agent-tree.component';
 import { PromptHistoryComponent } from './prompt-history/prompt-history.component';
 import { PlansViewerComponent } from './plans-viewer/plans-viewer.component';
+import { HistoryComponent } from './history/history.component';
+import { AgentDetailComponent } from './agent-detail/agent-detail.component';
+import { InsightsComponent } from './insights/insights.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    AgentDashboardComponent,
     LogViewerComponent,
     ChartsComponent,
-    SettingsComponent,
     OverviewComponent,
     LogsComponent,
     AnalyticsComponent,
     SettingsPageComponent,
-    AgentCardComponent,
     KanbanBoardComponent,
-    AgentTreeComponent,
     PromptHistoryComponent,
-    PlansViewerComponent
+    PlansViewerComponent,
+    HistoryComponent,
+    AgentDetailComponent,
+    InsightsComponent
   ],
   imports: [
     BrowserModule,
+    HttpClientModule,
     AppRoutingModule,
     FormsModule,
     ReactiveFormsModule,

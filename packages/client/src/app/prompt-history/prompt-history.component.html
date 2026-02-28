@@ -5,18 +5,19 @@
       <mat-form-field appearance="outline" class="search-field">
         <mat-label>Search prompts</mat-label>
         <input matInput [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" placeholder="Search...">
-        <mat-icon matSuffix (click)="onSearch()" style="cursor: pointer">search</mat-icon>
+        <mat-icon matSuffix class="clickable-icon" (click)="onSearch()">search</mat-icon>
       </mat-form-field>
     </div>
   </div>
 
   <div class="prompt-list" *ngIf="!loading">
-    <div class="prompt-entry" *ngFor="let prompt of filteredPrompts">
+    <div class="prompt-entry" *ngFor="let prompt of filteredPrompts; trackBy: trackByPrompt"
+         [style.borderLeftColor]="getAgentColor(prompt.agent_id)">
       <div class="prompt-meta">
         <span class="prompt-time">{{ formatTimestamp(prompt.timestamp) }}</span>
-        <span class="prompt-agent">{{ getAgentShortId(prompt.agent_id) }}</span>
+        <span class="prompt-agent" [style.backgroundColor]="prompt._badgeColor">{{ getAgentShortId(prompt.agent_id) }}</span>
       </div>
-      <div class="prompt-text">{{ truncateMessage(prompt.message) }}</div>
+      <div class="prompt-text">{{ prompt._truncated }}</div>
     </div>
 
     <div class="empty-state" *ngIf="filteredPrompts.length === 0">
