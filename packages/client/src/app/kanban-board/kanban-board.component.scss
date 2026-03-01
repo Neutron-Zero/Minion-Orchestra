@@ -89,7 +89,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 2px;
+    margin-bottom: 10px;
 
     .agent-id {
       font-size: 15px;
@@ -138,14 +138,26 @@
     color: rgba(255, 255, 255, 0.55);
     margin-bottom: 2px;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
   }
 
   .card-line-2 {
     display: flex;
     align-items: center;
     gap: 6px;
+    margin-top: 12px;
+
+    .agent-type-pill {
+      font-size: 12px;
+      font-weight: 500;
+      color: #a78bfa;
+      background: rgba(124, 58, 237, 0.15);
+      padding: 1px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
 
     .agent-folder {
       font-size: 14px;
@@ -156,6 +168,13 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .elapsed {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.4);
+      margin-left: auto;
+      flex-shrink: 0;
     }
   }
 

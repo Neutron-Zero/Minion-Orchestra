@@ -143,4 +143,9 @@ export class KanbanBoardComponent {
   trackByTool(index: number, tool: string): string {
     return tool;
   }
+
+  getSubagentType(agent: Agent): string {
+    const colonIdx = agent.name?.indexOf(':') ?? -1;
+    return colonIdx > 0 ? agent.name.substring(0, colonIdx) : 'Subagent';
+  }
 }

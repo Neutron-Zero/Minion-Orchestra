@@ -106,7 +106,7 @@ def scan_claude_processes(am: AgentManager) -> int:
             if pid in known_pids:
                 continue
 
-            agent_id = f"claude-proc-{pid}"
+            agent_id = str(pid)
             existing, _ = am.find_agent_by_id(agent_id)
             if existing:
                 continue

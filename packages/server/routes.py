@@ -116,6 +116,14 @@ async def _handle_pre_tool_use(agent, socket_id, event, sio):
     agent.status = "working"
     agent_manager.update_agent_tool(event.agentId, tool_name, tool_description)
 
+    # Stash Task tool info for upcoming SubagentStart
+    if tool_name == "Task" and isinstance(tool_input, dict):
+        agent.session_data = agent.session_data or {}
+        agent.session_data["_pending_subagent"] = {
+            "description": tool_input.get("description", ""),
+            "subagent_type": tool_input.get("subagent_type", ""),
+        }
+
     if tool_name == "TodoWrite" and isinstance(tool_input, dict):
         todos = tool_input.get("todos", [])
         in_progress = next((t for t in todos if isinstance(t, dict) and t.get("status") == "in_progress"), None)
@@ -160,18 +168,40 @@ async def _handle_post_tool_use(agent, socket_id, event, sio):
 
 async def _handle_subagent_start(agent, socket_id, event, sio):
     data = event.data or {}
-    description = data.get("description", "Subagent Task")
-    # The subagent process will self-register via its own hook events with parentPid set
+    agent_type_label = data.get("agent_type", "")
+    subagent_id = data.get("agent_id", f"sub-{int(datetime.now(timezone.utc).timestamp() * 1000)}")
+
+    # Get description from stashed PreToolUse Task data
+    pending = (agent.session_data or {}).pop("_pending_subagent", {})
+    description = pending.get("description") or agent_type_label or "Subagent Task"
+    subagent_type = pending.get("subagent_type") or agent_type_label
+
+    subagent = agent_manager.create_agent(
+        id=subagent_id, socket_id=f"hook-{subagent_id}",
+        name=f"{subagent_type}: {description}" if subagent_type else description,
+        type="subagent", status="working", current_task=description,
+        parent_pid=agent.pid, working_directory=agent.working_directory,
+    )
+    agent_manager.set_agent(f"hook-{subagent_id}", subagent)
     await _emit_and_store_log(sio,event.timestamp, "info", f"Subagent started: {description}", event.agentId)
+    await broadcast_agent_update(sio, agent_manager)
 
 
 async def _handle_subagent_stop(agent, socket_id, event, sio):
-    # Find subagents whose parent_pid matches this agent's pid
-    subagents = [a for a in agent_manager.get_all_agents()
-                 if a.type == "subagent" and a.parent_pid and a.parent_pid == agent.pid]
+    data = event.data or {}
+    subagent_id = data.get("agent_id")
+
+    # Try to find the specific subagent by its agent_id
+    if subagent_id:
+        sub, _ = agent_manager.find_agent_by_id(subagent_id)
+        subagents = [sub] if sub else []
+    else:
+        # Fallback: find all subagents of this parent
+        subagents = [a for a in agent_manager.get_all_agents()
+                     if a.type == "subagent" and a.parent_pid and a.parent_pid == agent.pid]
+
     for sub in subagents:
         sub.status = "completed"
-        sub.current_task = None
         sub.last_activity = datetime.now(timezone.utc)
 
         async def _remove(sid=sub.id):

@@ -62,8 +62,8 @@ def main():
     # Extract event information
     event_type = event_data.get('hook_event_name', 'Unknown')
 
-    # Use parent PID as stable agent identifier -- matches the scan-registered ID
-    agent_id = f"claude-proc-{os.getppid()}"
+    # Use parent PID as the agent identifier
+    agent_id = str(os.getppid())
 
     # Use psutil to get the session's root cwd and the grandparent PID
     # (grandparent PID = parent of the Claude process, used for hierarchy)

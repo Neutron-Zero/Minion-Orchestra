@@ -438,9 +438,7 @@ export class AgentMonitorService implements OnDestroy {
 
   private formatAgentId(id: string): string {
     if (!id) return 'Unknown';
-    if (id.startsWith('claude-proc-')) return id.substring(12);
-    if (id.startsWith('claude-')) return id.substring(7, 13);
-    return id.length > 8 ? id.slice(-8) : id;
+    return `agent-${id}`;
   }
 
   getAgentColor(agentId: string): string {
