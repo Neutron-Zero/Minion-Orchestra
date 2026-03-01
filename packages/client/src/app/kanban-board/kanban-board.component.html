@@ -1,6 +1,6 @@
 <ng-template #agentCard let-agent>
   <div class="kanban-card" [class.subagent-card]="agent.type === 'subagent'"
-       [style.borderLeftColor]="getAgentColor(agent.id)">
+       [style.--agent-color]="getAgentColor(agent.id)">
     <div class="card-line-1">
       <span class="agent-id">{{ getFormattedAgentId(agent.id) }}</span>
       <button class="kebab-btn" [matMenuTriggerFor]="agentMenu" (click)="$event.stopPropagation()">
@@ -38,8 +38,7 @@
   <div class="kanban-column" *ngFor="let col of columns; trackBy: trackByColumn">
     <div class="column-header" [style.borderTopColor]="col.color">
       <span class="column-label">{{ col.label }}</span>
-      <span class="column-count" [style.backgroundColor]="col.color"
-            [style.color]="getCountTextColor(col.color)">{{ getAgentCount(col) }}</span>
+      <span class="column-count" [style.backgroundColor]="col.color">{{ getAgentCount(col) }}</span>
     </div>
     <div class="column-body">
       <ng-container *ngFor="let node of col.agentNodes; trackBy: trackByNode">

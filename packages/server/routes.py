@@ -175,7 +175,7 @@ async def _handle_subagent_stop(agent, socket_id, event, sio):
         sub.last_activity = datetime.now(timezone.utc)
 
         async def _remove(sid=sub.id):
-            await asyncio.sleep(5)
+            await asyncio.sleep(60)
             agent_manager.remove_agent_by_id(sid)
             await broadcast_agent_update(sio, agent_manager)
         asyncio.create_task(_remove())
@@ -225,7 +225,7 @@ async def _handle_session_end(agent, socket_id, event, sio):
     await db.update_session_status(event.agentId, "offline", end_time=_ts(event.timestamp))
 
     async def _remove():
-        await asyncio.sleep(10)
+        await asyncio.sleep(60)
         agent_manager.remove_agent_by_id(event.agentId)
         await broadcast_agent_update(sio, agent_manager)
     asyncio.create_task(_remove())
