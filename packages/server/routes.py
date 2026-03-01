@@ -117,7 +117,7 @@ async def _handle_pre_tool_use(agent, socket_id, event, sio):
     agent_manager.update_agent_tool(event.agentId, tool_name, tool_description)
 
     # Stash Task tool info for upcoming SubagentStart
-    if tool_name == "Task" and isinstance(tool_input, dict):
+    if tool_name in ("Task", "Agent") and isinstance(tool_input, dict):
         agent.session_data = agent.session_data or {}
         agent.session_data["_pending_subagent"] = {
             "description": tool_input.get("description", ""),
@@ -248,7 +248,9 @@ async def _handle_post_tool_use_failure(agent, socket_id, event, sio):
     fail_error = data.get("error", "Unknown error")
     is_interrupt = data.get("is_interrupt", False)
     agent_manager.clear_agent_tool(event.agentId)
-    if task_queue.get_queue()["inProgress"] > 0 and is_interrupt:
+    agent.status = "failed"
+    agent.status_changed_at = datetime.now(timezone.utc)
+    if task_queue.get_queue()["inProgress"] > 0:
         task_queue.decrement("inProgress")
         task_queue.increment("failed")
     suffix = " (interrupted)" if is_interrupt else ""

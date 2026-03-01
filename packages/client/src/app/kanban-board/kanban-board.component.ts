@@ -34,10 +34,10 @@ export class KanbanBoardComponent {
   private _agents: Agent[] = [];
 
   private static readonly COLUMN_DEFS: { key: string; label: string; color: string; statuses: string[] }[] = [
-    { key: 'failed', label: 'Failed', color: '#f44336', statuses: ['failed'] },
-    { key: 'waiting', label: 'Waiting', color: '#ffc107', statuses: ['waiting', 'awaiting-permission', 'permission-requested'] },
-    { key: 'working', label: 'Working', color: '#4caf50', statuses: ['working'] },
     { key: 'idle', label: 'Idle', color: '#6366f1', statuses: ['idle'] },
+    { key: 'working', label: 'Working', color: '#4caf50', statuses: ['working'] },
+    { key: 'waiting', label: 'Waiting for Input', color: '#ffc107', statuses: ['waiting', 'awaiting-permission', 'permission-requested'] },
+    { key: 'failed', label: 'Failed', color: '#f44336', statuses: ['failed'] },
     { key: 'completed', label: 'Completed', color: '#6e7681', statuses: ['completed', 'offline', 'paused'] },
   ];
 

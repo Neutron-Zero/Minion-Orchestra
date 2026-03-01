@@ -34,6 +34,7 @@ export class AgentDetailComponent implements OnInit, OnDestroy {
   private agentId = '';
   private durationTimer?: ReturnType<typeof setInterval>;
   private routeSub?: Subscription;
+  private logSub?: Subscription;
   private readonly toolRegex = /\b(Read|Write|Edit|Bash|Glob|Grep|Task|WebFetch|WebSearch|NotebookEdit)\b/g;
 
   constructor(
@@ -52,6 +53,7 @@ export class AgentDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.routeSub?.unsubscribe();
+    this.logSub?.unsubscribe();
     if (this.durationTimer) {
       clearInterval(this.durationTimer);
     }
@@ -72,6 +74,7 @@ export class AgentDetailComponent implements OnInit, OnDestroy {
           this.events = data.events || [];
           this.updateDuration();
           this.startDurationTimer();
+          this.subscribeToLogs();
         } else {
           this.error = 'Failed to load agent details.';
         }
@@ -81,6 +84,31 @@ export class AgentDetailComponent implements OnInit, OnDestroy {
       error: () => {
         this.error = 'Could not connect to server.';
         this.loading = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private subscribeToLogs(): void {
+    this.logSub?.unsubscribe();
+    const knownKeys = new Set(this.logs.map(l => `${l.timestamp}|${l.message}`));
+    this.logSub = this.agentService.getAgentLogs(this.agentId).subscribe(logs => {
+      let added = false;
+      for (const log of logs) {
+        const key = `${new Date(log.timestamp).toISOString()}|${log.message}`;
+        if (!knownKeys.has(key)) {
+          knownKeys.add(key);
+          this.logs.unshift({
+            timestamp: new Date(log.timestamp).toISOString(),
+            level: log.level,
+            message: log.message,
+            _parsed: this.parseToolsInMessage(log.message),
+          });
+          added = true;
+        }
+      }
+      if (added) {
+        this.logs = this.logs.slice(0, 100);
         this.cdr.markForCheck();
       }
     });

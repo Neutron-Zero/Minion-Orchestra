@@ -18,7 +18,7 @@
         </button>
       </mat-menu>
     </div>
-    <div class="card-task" *ngIf="agent.currentTask">{{ agent.currentTask }}</div>
+    <div class="card-task" *ngIf="agent.type === 'subagent' ? agent.name : agent.currentTask">{{ agent.type === 'subagent' ? agent.name : agent.currentTask }}</div>
     <div class="card-line-2">
       <span class="agent-folder" *ngIf="getFolderName(agent)">{{ getFolderName(agent) }}</span>
       <span class="elapsed">{{ getActiveTime(agent) }}</span>

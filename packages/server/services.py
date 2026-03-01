@@ -154,7 +154,8 @@ def cleanup_dead_agents(am: AgentManager, tq: TaskQueue) -> int:
                 tq.decrement("completed")
                 agent.status = "offline"
                 agent.status_changed_at = now
-                agent.current_task = None
+                if agent.type != "subagent":
+                    agent.current_task = None
                 agent.current_tool = None
                 am.set_agent(socket_id, agent)
                 changed_count += 1
@@ -165,7 +166,8 @@ def cleanup_dead_agents(am: AgentManager, tq: TaskQueue) -> int:
             tq.decrement(agent.status)
             agent.status = "offline"
             agent.status_changed_at = now
-            agent.current_task = None
+            if agent.type != "subagent":
+                agent.current_task = None
             agent.current_tool = None
             agent.last_activity = now
             am.set_agent(socket_id, agent)
