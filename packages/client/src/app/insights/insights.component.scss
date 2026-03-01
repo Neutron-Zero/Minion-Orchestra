@@ -12,8 +12,9 @@
 
 .insights-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
+  align-items: stretch;
 }
 
 .insight-card {
@@ -21,7 +22,8 @@
   border-radius: 12px;
   border: 1px solid #30363d;
   padding: 16px;
-  min-height: 200px;
+  display: flex;
+  flex-direction: column;
 
   h4 {
     margin: 0 0 12px 0;
@@ -35,9 +37,12 @@
 
 .chart-container {
   position: relative;
+  flex: 1;
+  min-height: 0;
 
   canvas {
-    max-height: 200px;
+    width: 100% !important;
+    height: 100% !important;
   }
 }
 
@@ -46,70 +51,122 @@
   overflow-x: auto;
 }
 
+.heatmap-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.heatmap-day-headers {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 2px;
+
+  .heatmap-label {
+    width: 28px;
+    flex-shrink: 0;
+  }
+
+  .heatmap-day-label {
+    width: 12px;
+    flex-shrink: 0;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    text-align: left;
+    white-space: nowrap;
+    overflow: visible;
+
+    &:not(.visible) {
+      visibility: hidden;
+    }
+  }
+}
+
 .heatmap-grid {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .heatmap-row {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
 
   .heatmap-label {
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.35);
-    width: 40px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    width: 28px;
     flex-shrink: 0;
     text-align: right;
-    padding-right: 6px;
+    padding-right: 4px;
   }
 
   .heatmap-cell {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     border-radius: 2px;
     flex-shrink: 0;
     cursor: default;
     transition: opacity 0.15s ease;
 
     &:hover {
-      opacity: 0.8;
+      opacity: 0.7;
     }
   }
 }
 
-// Stats
-.stats-row {
+.heatmap-legend {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.stat-item {
-  flex: 1;
-  min-width: 80px;
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  text-align: center;
-  padding: 12px 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
+  justify-content: flex-end;
+  gap: 3px;
+  margin-top: 8px;
 
-  .stat-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: #ffffff;
-    line-height: 1.2;
-    margin-bottom: 4px;
-    word-break: break-all;
+  .legend-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 0 3px;
   }
 
-  .stat-label {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.4);
+  .legend-cell {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+  }
+}
+
+// Card header with inline stats
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+
+  h4 {
+    margin: 0;
+  }
+}
+
+.header-stats {
+  display: flex;
+  gap: 16px;
+}
+
+.header-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+
+  .header-stat-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+  }
+
+  .header-stat-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.35);
     text-transform: uppercase;
     letter-spacing: 0.3px;
   }

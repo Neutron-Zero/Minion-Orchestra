@@ -2,58 +2,63 @@
 
   <div class="insights-grid">
     <div class="insight-card">
-      <h4>Daily Activity</h4>
-      <div class="chart-container" *ngIf="dailyData.length > 0">
-        <canvas #dailyCanvas></canvas>
+      <h4>Activity Pulse</h4>
+      <div class="chart-container">
+        <canvas #pulseCanvas></canvas>
       </div>
-      <div class="empty-insight" *ngIf="dailyData.length === 0">No data yet</div>
     </div>
 
     <div class="insight-card heatmap-card">
-      <h4>Activity Heatmap</h4>
-      <div class="heatmap-grid" *ngIf="heatmapRows.length > 0">
-        <div class="heatmap-row" *ngFor="let row of heatmapRows; trackBy: trackByRow">
-          <span class="heatmap-label">{{ row.label }}</span>
-          <div
-            class="heatmap-cell"
-            *ngFor="let cell of row.cells; trackBy: trackByCell"
-            [style.background]="cell.color"
-            [title]="cell.label + ': ' + cell.count + ' events'">
+      <h4>Hourly Activity</h4>
+      <div class="heatmap-container" *ngIf="heatmapRows.length > 0">
+        <div class="heatmap-day-headers">
+          <span class="heatmap-label"></span>
+          <span class="heatmap-day-label"
+            *ngFor="let day of heatmapDayLabels; trackBy: trackByCell"
+            [class.visible]="day.length > 0">{{ day }}</span>
+        </div>
+        <div class="heatmap-grid">
+          <div class="heatmap-row" *ngFor="let row of heatmapRows; trackBy: trackByRow">
+            <span class="heatmap-label">{{ row.label }}</span>
+            <div
+              class="heatmap-cell"
+              *ngFor="let cell of row.cells; trackBy: trackByCell"
+              [style.background]="cell.color"
+              [title]="cell.label + ': ' + cell.count + ' events'">
+            </div>
           </div>
+        </div>
+        <div class="heatmap-legend">
+          <span class="legend-text">Less</span>
+          <div class="legend-cell" *ngFor="let color of legendColors" [style.background]="color"></div>
+          <span class="legend-text">More</span>
         </div>
       </div>
       <div class="empty-insight" *ngIf="heatmapRows.length === 0">No data yet</div>
     </div>
 
     <div class="insight-card">
-      <h4>Model Usage</h4>
-      <div class="chart-container" *ngIf="modelData.length > 0">
-        <canvas #modelCanvas></canvas>
-      </div>
-      <div class="empty-insight" *ngIf="modelData.length === 0">No data yet</div>
-    </div>
-
-    <div class="insight-card">
-      <h4>Session Statistics</h4>
-      <div class="stats-row" *ngIf="dailyData.length > 0 || modelData.length > 0">
-        <div class="stat-item">
-          <span class="stat-value">{{ stats.totalSessions }}</span>
-          <span class="stat-label">Total Sessions</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">{{ stats.totalEvents }}</span>
-          <span class="stat-label">Total Events</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">{{ stats.mostActiveDay }}</span>
-          <span class="stat-label">Most Active Day</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">{{ stats.mostUsedModel }}</span>
-          <span class="stat-label">Most Used Model</span>
+      <div class="card-header">
+        <h4>Daily Activity</h4>
+        <div class="header-stats" *ngIf="dailyData.length > 0">
+          <div class="header-stat">
+            <span class="header-stat-value">{{ stats.totalSessions }}</span>
+            <span class="header-stat-label">Sessions</span>
+          </div>
+          <div class="header-stat">
+            <span class="header-stat-value">{{ stats.totalEvents }}</span>
+            <span class="header-stat-label">Events</span>
+          </div>
+          <div class="header-stat">
+            <span class="header-stat-value">{{ stats.mostActiveDay }}</span>
+            <span class="header-stat-label">Most Active</span>
+          </div>
         </div>
       </div>
-      <div class="empty-insight" *ngIf="dailyData.length === 0 && modelData.length === 0">No data yet</div>
+      <div class="chart-container" *ngIf="dailyData.length > 0">
+        <canvas #dailyCanvas></canvas>
+      </div>
+      <div class="empty-insight" *ngIf="dailyData.length === 0">No data yet</div>
     </div>
   </div>
 </div>
