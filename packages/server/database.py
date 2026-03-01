@@ -317,6 +317,18 @@ async def get_sessions(
     return [_row_to_dict(r) for r in rows]
 
 
+async def get_completed_sessions(limit: int = 100) -> list[dict[str, Any]]:
+    """Return the most recent completed/offline sessions for restoring on startup."""
+    db = _get_db()
+    cursor = await db.execute(
+        "SELECT * FROM sessions WHERE status IN ('completed', 'offline') "
+        "ORDER BY start_time DESC LIMIT ?",
+        (limit,),
+    )
+    rows = await cursor.fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
 async def get_prompts(
     search: str | None = None,
     project: str | None = None,

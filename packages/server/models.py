@@ -46,6 +46,7 @@ class Agent(BaseModel):
     session_data: dict[str, Any] | None = None
     working_directory: str | None = None
     status_changed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    active_duration: float = 0.0  # cumulative active seconds
 
 
 class HookEvent(BaseModel):

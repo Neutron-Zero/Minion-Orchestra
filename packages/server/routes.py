@@ -176,6 +176,7 @@ async def _handle_subagent_start(agent, socket_id, event, sio):
     description = pending.get("description") or agent_type_label or "Subagent Task"
     subagent_type = pending.get("subagent_type") or agent_type_label
 
+    now = datetime.now(timezone.utc)
     subagent = agent_manager.create_agent(
         id=subagent_id, socket_id=f"hook-{subagent_id}",
         name=f"{subagent_type}: {description}" if subagent_type else description,
@@ -183,6 +184,13 @@ async def _handle_subagent_start(agent, socket_id, event, sio):
         parent_pid=agent.pid, working_directory=agent.working_directory,
     )
     agent_manager.set_agent(f"hook-{subagent_id}", subagent)
+    await db.store_session(
+        id=subagent_id, agent_name=subagent.name, status="working",
+        working_directory=subagent.working_directory,
+        start_time=subagent.start_time.isoformat(),
+        pid=subagent.pid,
+        metadata={"type": "subagent", "parent_pid": agent.pid, "active_duration": 0},
+    )
     await _emit_and_store_log(sio,event.timestamp, "info", f"Subagent started: {description}", event.agentId)
     await broadcast_agent_update(sio, agent_manager)
 
@@ -205,6 +213,13 @@ async def _handle_subagent_stop(agent, socket_id, event, sio):
         sub.status = "completed"
         sub.status_changed_at = now
         sub.last_activity = now
+        await db.store_session(
+            id=sub.id, agent_name=sub.name, status="completed",
+            working_directory=sub.working_directory,
+            start_time=sub.start_time.isoformat(),
+            pid=sub.pid,
+            metadata={"type": "subagent", "parent_pid": sub.parent_pid, "active_duration": sub.active_duration},
+        )
 
     await _emit_and_store_log(sio,event.timestamp, "info", "Subagent completed", event.agentId)
     await broadcast_agent_update(sio, agent_manager)
@@ -374,11 +389,16 @@ async def hook_endpoint(event: HookEvent, request: Request):
         )
 
         # Upsert session in database (every hook event keeps session record current)
+        session_meta = dict(agent.session_data or {})
+        session_meta["type"] = agent.type
+        session_meta["active_duration"] = agent.active_duration
+        if agent.parent_pid:
+            session_meta["parent_pid"] = agent.parent_pid
         await db.store_session(
             id=event.agentId, agent_name=agent.name, status=agent.status,
             working_directory=agent.working_directory,
             start_time=agent.start_time.isoformat() if agent.start_time else _ts(event.timestamp),
-            pid=agent.pid, metadata=agent.session_data,
+            pid=agent.pid, metadata=session_meta,
         )
 
         # Fire native notifications for key events

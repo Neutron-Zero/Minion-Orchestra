@@ -209,6 +209,14 @@
   }
 }
 
+.completed-card {
+  border-left-color: #6e7681;
+
+  &:hover {
+    border-left-color: var(--agent-color);
+  }
+}
+
 .subagent-card {
   margin-left: 16px;
   border-left-width: 2px !important;

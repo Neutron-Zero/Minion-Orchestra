@@ -1,5 +1,6 @@
-<ng-template #agentCard let-agent>
-  <div class="kanban-card" [class.subagent-card]="agent.type === 'subagent'"
+<ng-template #agentCard let-agent let-isChild="isChild">
+  <div class="kanban-card" [class.subagent-card]="isChild"
+       [class.completed-card]="agent.status === 'completed' || agent.status === 'offline' || agent.status === 'paused'"
        [style.--agent-color]="getAgentColor(agent.id)">
     <div class="card-line-1">
       <span class="agent-id">{{ agent.type === 'subagent' ? getFormattedSubagentId(agent.id) : getFormattedAgentId(agent.id) }}</span>
@@ -20,7 +21,7 @@
     <div class="card-task" *ngIf="agent.currentTask">{{ agent.currentTask }}</div>
     <div class="card-line-2">
       <span class="agent-folder" *ngIf="getFolderName(agent)">{{ getFolderName(agent) }}</span>
-      <span class="elapsed">{{ getElapsedTime(agent.startTime) }}</span>
+      <span class="elapsed">{{ getActiveTime(agent) }}</span>
     </div>
   </div>
 </ng-template>

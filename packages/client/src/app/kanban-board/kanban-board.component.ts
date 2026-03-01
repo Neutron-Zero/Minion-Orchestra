@@ -72,8 +72,8 @@ export class KanbanBoardComponent {
       let filtered = topLevel
         .filter(a => def.statuses.includes(a.status))
         .sort((a, b) => {
-          const aTime = a.lastActivity ? new Date(a.lastActivity).getTime() : 0;
-          const bTime = b.lastActivity ? new Date(b.lastActivity).getTime() : 0;
+          const aTime = a.lastActivity ? new Date(a.lastActivity).getTime() : (a.startTime ? new Date(a.startTime).getTime() : 0);
+          const bTime = b.lastActivity ? new Date(b.lastActivity).getTime() : (b.startTime ? new Date(b.startTime).getTime() : 0);
           return bTime - aTime;
         });
 
@@ -122,12 +122,9 @@ export class KanbanBoardComponent {
     return '';
   }
 
-  getElapsedTime(startTime?: Date | string): string {
-    if (!startTime) return '';
-    const start = new Date(startTime);
-    if (isNaN(start.getTime())) return '';
-    const diff = Date.now() - start.getTime();
-    const totalSeconds = Math.floor(diff / 1000);
+  getActiveTime(agent: Agent): string {
+    const totalSeconds = Math.floor(agent.activeDuration || 0);
+    if (totalSeconds <= 0) return '0m 00s';
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;

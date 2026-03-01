@@ -18,7 +18,7 @@ from config import config
 from routes import router
 from services import agent_manager, task_queue, CleanupService, scan_claude_processes
 from websocket_handlers import register_handlers
-from database import init_db, close_db
+from database import init_db, close_db, get_completed_sessions
 from session_watcher import SessionWatcher
 
 # Path to the pre-built Angular client
@@ -70,6 +70,46 @@ async def lifespan(app):
     out(f"{p}  Waiting for minions to connect...{r}")
     out()
     await init_db()
+    # Restore completed/offline agents from database
+    import json as _json
+    restored = 0
+    for s in await get_completed_sessions(100):
+        if agent_manager.find_agent_by_id(s["id"])[0]:
+            continue
+        meta = {}
+        if s.get("metadata"):
+            try:
+                meta = _json.loads(s["metadata"]) if isinstance(s["metadata"], str) else s["metadata"]
+            except (ValueError, TypeError):
+                pass
+        agent_type = meta.get("type", "claude-code")
+        parent_pid = meta.get("parent_pid")
+        active_duration = meta.get("active_duration", 0.0)
+        agent = agent_manager.create_agent(
+            id=s["id"], socket_id=f"db-{s['id']}",
+            name=s.get("agent_name") or "Claude Agent",
+            type=agent_type, status=s.get("status") or "offline",
+            working_directory=s.get("working_directory") or "",
+            pid=s.get("pid"), parent_pid=parent_pid,
+            active_duration=active_duration,
+        )
+        from datetime import datetime as _dt
+        if s.get("start_time"):
+            try:
+                agent.start_time = _dt.fromisoformat(s["start_time"])
+            except (ValueError, TypeError):
+                pass
+        if s.get("end_time"):
+            try:
+                agent.last_activity = _dt.fromisoformat(s["end_time"])
+                agent.status_changed_at = _dt.fromisoformat(s["end_time"])
+            except (ValueError, TypeError):
+                pass
+        agent_manager.set_agent(f"db-{s['id']}", agent)
+        restored += 1
+    if restored:
+        out(f"  {p}>{r} Restored {w}{restored}{r} session{'s' if restored != 1 else ''} from database")
+        out()
     cleanup_service.start()
     session_watcher.start()
     yield

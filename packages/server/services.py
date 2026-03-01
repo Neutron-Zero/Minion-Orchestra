@@ -113,11 +113,12 @@ def scan_claude_processes(am: AgentManager) -> int:
 
             cwd = proc.info.get("cwd") or ""
             name = os.path.basename(cwd) if cwd else f"Claude ({pid})"
+            start_time = datetime.fromtimestamp(proc.create_time(), tz=timezone.utc)
 
             agent = am.create_agent(
                 id=agent_id, socket_id=f"scan-{agent_id}",
                 name=name, type="claude-code", status="idle",
-                working_directory=cwd, pid=pid,
+                working_directory=cwd, pid=pid, start_time=start_time,
             )
             am.set_agent(f"scan-{agent_id}", agent)
             known_pids.add(pid)
@@ -265,6 +266,8 @@ class AgentManager:
         self.set_agent(socket_id, agent)
         return True
 
+    ACTIVE_STATUSES = {"working", "waiting", "awaiting-permission", "permission-requested", "failed"}
+
     def update_agent_status(self, agent_id: str, status: str) -> bool:
         agent, socket_id = self.find_agent_by_id(agent_id)
         if not agent:
@@ -369,21 +372,33 @@ class CleanupService:
         self.sio = sio
         self._task: asyncio.Task | None = None
 
-    async def _cleanup_loop(self):
+    async def _tick_loop(self):
+        """1-second loop: increment active counters and broadcast agent state."""
+        cleanup_interval = config.cleanup_interval_ms / 1000
+        elapsed_since_cleanup = 0.0
         while True:
-            await asyncio.sleep(config.cleanup_interval_ms / 1000)
-            # Scan for new Claude processes
-            found = scan_claude_processes(self.agent_manager)
-            # Clean up dead agents
-            changed = cleanup_dead_agents(self.agent_manager, self.task_queue)
-            if found > 0 or changed > 0:
-                await self.sio.emit("agent_update", self.agent_manager.get_all_agents_serialized())
-                await self.sio.emit("task_update", self.task_queue.get_queue())
+            await asyncio.sleep(1)
+            elapsed_since_cleanup += 1
+
+            # Increment active_duration for active agents
+            for agent in self.agent_manager.get_all_agents():
+                if agent.status in self.agent_manager.ACTIVE_STATUSES:
+                    agent.active_duration += 1
+
+            # Run cleanup and process scan on the slower interval
+            if elapsed_since_cleanup >= cleanup_interval:
+                elapsed_since_cleanup = 0
+                scan_claude_processes(self.agent_manager)
+                changed = cleanup_dead_agents(self.agent_manager, self.task_queue)
+                if changed > 0:
+                    await self.sio.emit("task_update", self.task_queue.get_queue())
+
+            await self.sio.emit("agent_update", self.agent_manager.get_all_agents_serialized())
 
     def start(self):
         if self._task:
             self._task.cancel()
-        self._task = asyncio.create_task(self._cleanup_loop())
+        self._task = asyncio.create_task(self._tick_loop())
 
     def stop(self):
         if self._task:

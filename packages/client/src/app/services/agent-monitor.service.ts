@@ -26,6 +26,7 @@ export interface Agent {
   lastToolTime?: Date;
   pid?: number;
   parentPid?: number;
+  activeDuration?: number;
 }
 
 export interface AgentMetrics {
