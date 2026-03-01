@@ -45,6 +45,7 @@ class Agent(BaseModel):
     parent_pid: int | None = None
     session_data: dict[str, Any] | None = None
     working_directory: str | None = None
+    status_changed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class HookEvent(BaseModel):

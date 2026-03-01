@@ -127,13 +127,12 @@ def scan_claude_processes(am: AgentManager) -> int:
     return found
 
 
-# Grace periods before removing dead agents
-OFFLINE_GRACE_SECONDS = 60
-COMPLETED_SUBAGENT_GRACE_SECONDS = 5 * 60  # Keep completed subagents for 5 minutes
+# How long a completed agent stays in "completed" before transitioning to offline
+COMPLETED_TO_OFFLINE_SECONDS = 30
 
 
 def cleanup_dead_agents(am: AgentManager, tq: TaskQueue) -> int:
-    """Mark dead agents as offline, remove after grace period."""
+    """Mark dead agents as offline. Offline agents are never removed."""
     changed_count = 0
     to_remove: list[str] = []
     now = datetime.now(timezone.utc)
@@ -143,31 +142,33 @@ def cleanup_dead_agents(am: AgentManager, tq: TaskQueue) -> int:
             to_remove.append(socket_id)
             continue
 
-        # Completed subagents: keep visible for 5 minutes then remove
-        if agent.type == "subagent" and agent.status == "completed":
-            age = (now - agent.last_activity).total_seconds() if agent.last_activity else COMPLETED_SUBAGENT_GRACE_SECONDS + 1
-            if age > COMPLETED_SUBAGENT_GRACE_SECONDS:
-                to_remove.append(socket_id)
+        # Already offline -- keep forever
+        if agent.status == "offline":
+            continue
+
+        # Completed agents: transition to offline after grace period (per-agent timer)
+        if agent.status == "completed":
+            age = (now - agent.status_changed_at).total_seconds()
+            if age > COMPLETED_TO_OFFLINE_SECONDS:
+                tq.decrement("completed")
+                agent.status = "offline"
+                agent.status_changed_at = now
+                agent.current_task = None
+                agent.current_tool = None
+                am.set_agent(socket_id, agent)
                 changed_count += 1
             continue
 
         # If agent has a PID, check if the process is still alive
         if agent.pid and not psutil.pid_exists(agent.pid):
-            if agent.status not in ("offline", "completed"):
-                # Transition to offline instead of removing
-                tq.decrement(agent.status)
-                agent.status = "offline"
-                agent.current_task = None
-                agent.current_tool = None
-                agent.last_activity = now
-                am.set_agent(socket_id, agent)
-                changed_count += 1
-            else:
-                # Already offline/completed -- remove after grace period
-                age = (now - agent.last_activity).total_seconds() if agent.last_activity else OFFLINE_GRACE_SECONDS + 1
-                if age > OFFLINE_GRACE_SECONDS:
-                    to_remove.append(socket_id)
-                    changed_count += 1
+            tq.decrement(agent.status)
+            agent.status = "offline"
+            agent.status_changed_at = now
+            agent.current_task = None
+            agent.current_tool = None
+            agent.last_activity = now
+            am.set_agent(socket_id, agent)
+            changed_count += 1
 
     for socket_id in to_remove:
         am.remove_agent(socket_id)
@@ -268,8 +269,11 @@ class AgentManager:
         agent, socket_id = self.find_agent_by_id(agent_id)
         if not agent:
             return False
+        now = datetime.now(timezone.utc)
+        if agent.status != status:
+            agent.status_changed_at = now
         agent.status = status
-        agent.last_activity = datetime.now(timezone.utc)
+        agent.last_activity = now
         if status in ("idle", "offline"):
             agent.current_task = None
             agent.current_tool = None

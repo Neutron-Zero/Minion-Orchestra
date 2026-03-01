@@ -38,8 +38,7 @@ export class KanbanBoardComponent {
     { key: 'waiting', label: 'Waiting', color: '#ffc107', statuses: ['waiting', 'awaiting-permission', 'permission-requested'] },
     { key: 'working', label: 'Working', color: '#4caf50', statuses: ['working'] },
     { key: 'idle', label: 'Idle', color: '#6366f1', statuses: ['idle'] },
-    { key: 'completed', label: 'Completed', color: '#2196f3', statuses: ['completed'] },
-    { key: 'offline', label: 'Offline', color: '#6e7681', statuses: ['offline', 'paused'] },
+    { key: 'completed', label: 'Completed', color: '#6e7681', statuses: ['completed', 'offline', 'paused'] },
   ];
 
   constructor(private agentService: AgentMonitorService) {}
@@ -51,13 +50,16 @@ export class KanbanBoardComponent {
       if (a.pid) pidToAgent.set(a.pid, a);
     }
 
-    // Separate children (agents whose parentPid matches a known agent's pid)
+    // Separate children (agents whose parentPid matches a known agent's pid).
+    // Only attach children that are still active; completed/offline children
+    // become top-level so they appear in their own kanban column.
+    const DETACHED_STATUSES = new Set(['completed', 'offline', 'paused']);
     const childrenByParentId = new Map<string, Agent[]>();
     const topLevel: Agent[] = [];
 
     for (const a of this._agents) {
       const parent = a.parentPid ? pidToAgent.get(a.parentPid) : undefined;
-      if (parent && parent.id !== a.id) {
+      if (parent && parent.id !== a.id && !DETACHED_STATUSES.has(a.status)) {
         const list = childrenByParentId.get(parent.id) || [];
         list.push(a);
         childrenByParentId.set(parent.id, list);
@@ -67,13 +69,18 @@ export class KanbanBoardComponent {
     }
 
     this.columns = KanbanBoardComponent.COLUMN_DEFS.map(def => {
-      const filtered = topLevel
+      let filtered = topLevel
         .filter(a => def.statuses.includes(a.status))
         .sort((a, b) => {
           const aTime = a.lastActivity ? new Date(a.lastActivity).getTime() : 0;
           const bTime = b.lastActivity ? new Date(b.lastActivity).getTime() : 0;
           return bTime - aTime;
         });
+
+      // Cap the completed column to the 100 most recent
+      if (def.key === 'completed') {
+        filtered = filtered.slice(0, 100);
+      }
 
       const agentNodes: AgentNode[] = filtered.map(a => ({
         agent: a,
@@ -98,6 +105,13 @@ export class KanbanBoardComponent {
 
   getFormattedAgentId(id: string): string {
     return this.agentService.getFormattedAgentId(id);
+  }
+
+  getFormattedSubagentId(id: string): string {
+    if (!id) return 'subagent';
+    const digits = id.replace(/\D/g, '');
+    const suffix = digits.slice(-5).padStart(5, '0');
+    return `subagent-${suffix}`;
   }
 
   getFolderName(agent: Agent): string {
@@ -144,8 +158,4 @@ export class KanbanBoardComponent {
     return tool;
   }
 
-  getSubagentType(agent: Agent): string {
-    const colonIdx = agent.name?.indexOf(':') ?? -1;
-    return colonIdx > 0 ? agent.name.substring(0, colonIdx) : 'Subagent';
-  }
 }

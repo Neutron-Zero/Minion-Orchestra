@@ -200,15 +200,11 @@ async def _handle_subagent_stop(agent, socket_id, event, sio):
         subagents = [a for a in agent_manager.get_all_agents()
                      if a.type == "subagent" and a.parent_pid and a.parent_pid == agent.pid]
 
+    now = datetime.now(timezone.utc)
     for sub in subagents:
         sub.status = "completed"
-        sub.last_activity = datetime.now(timezone.utc)
-
-        async def _remove(sid=sub.id):
-            await asyncio.sleep(60)
-            agent_manager.remove_agent_by_id(sid)
-            await broadcast_agent_update(sio, agent_manager)
-        asyncio.create_task(_remove())
+        sub.status_changed_at = now
+        sub.last_activity = now
 
     await _emit_and_store_log(sio,event.timestamp, "info", "Subagent completed", event.agentId)
     await broadcast_agent_update(sio, agent_manager)
@@ -247,18 +243,13 @@ async def _handle_post_tool_use_failure(agent, socket_id, event, sio):
 async def _handle_session_end(agent, socket_id, event, sio):
     reason = (event.data or {}).get("reason", "unknown")
     agent.status = "offline"
+    agent.status_changed_at = datetime.now(timezone.utc)
     agent.current_task = None
     agent.current_tool = None
     if task_queue.get_queue()["inProgress"] > 0:
         task_queue.decrement("inProgress")
     await _emit_and_store_log(sio, event.timestamp, "info", f"Session ended ({reason})", event.agentId)
     await db.update_session_status(event.agentId, "offline", end_time=_ts(event.timestamp))
-
-    async def _remove():
-        await asyncio.sleep(60)
-        agent_manager.remove_agent_by_id(event.agentId)
-        await broadcast_agent_update(sio, agent_manager)
-    asyncio.create_task(_remove())
 
 
 async def _handle_pre_compact(agent, socket_id, event, sio):

@@ -2,14 +2,14 @@
   <div class="kanban-card" [class.subagent-card]="agent.type === 'subagent'"
        [style.--agent-color]="getAgentColor(agent.id)">
     <div class="card-line-1">
-      <span class="agent-id">{{ getFormattedAgentId(agent.id) }}</span>
+      <span class="agent-id">{{ agent.type === 'subagent' ? getFormattedSubagentId(agent.id) : getFormattedAgentId(agent.id) }}</span>
       <button class="kebab-btn" [matMenuTriggerFor]="agentMenu" (click)="$event.stopPropagation()">
         <mat-icon>more_vert</mat-icon>
       </button>
       <mat-menu #agentMenu="matMenu" class="agent-card-menu">
-        <button mat-menu-item (click)="focus.emit(agent)">
+        <button mat-menu-item (click)="focus.emit(agent)" *ngIf="agent.type !== 'subagent'">
           <mat-icon>terminal</mat-icon>
-          <span>Focus Terminal</span>
+          <span>Go to Terminal</span>
         </button>
         <button mat-menu-item (click)="viewDetails.emit(agent)">
           <mat-icon>info</mat-icon>
@@ -19,7 +19,6 @@
     </div>
     <div class="card-task" *ngIf="agent.currentTask">{{ agent.currentTask }}</div>
     <div class="card-line-2">
-      <span class="agent-type-pill" *ngIf="agent.type === 'subagent'">{{ getSubagentType(agent) }}</span>
       <span class="agent-folder" *ngIf="getFolderName(agent)">{{ getFolderName(agent) }}</span>
       <span class="elapsed">{{ getElapsedTime(agent.startTime) }}</span>
     </div>

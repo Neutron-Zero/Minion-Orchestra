@@ -29,7 +29,7 @@ sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*", logger=F
 cleanup_service = CleanupService(agent_manager, task_queue, sio)
 session_watcher = SessionWatcher(agent_manager, sio)
 
-VERSION = "1.4.4"
+VERSION = "1.4.5"
 
 @asynccontextmanager
 async def lifespan(app):
@@ -118,4 +118,7 @@ if os.path.isdir(CLIENT_DIST):
 combined = socketio.ASGIApp(sio, other_asgi_app=app)
 
 if __name__ == "__main__":
-    uvicorn.run("server:combined", host="0.0.0.0", port=config.port, log_level="warning")
+    try:
+        uvicorn.run("server:combined", host="0.0.0.0", port=config.port, log_level="warning")
+    except (KeyboardInterrupt, SystemExit):
+        pass
