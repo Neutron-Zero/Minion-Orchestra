@@ -18,17 +18,29 @@
     gap: 12px;
 
     .header-logo {
-      width: 36px;
-      height: 36px;
+      width: 42px;
+      height: 42px;
       border-radius: 8px;
       object-fit: cover;
     }
 
-    .header-title {
-      font-size: 22px;
-      font-weight: 700;
-      color: #f1f5f9;
-      letter-spacing: -0.3px;
+    .header-title-group {
+      display: flex;
+      flex-direction: column;
+
+      .header-title {
+        font-size: 22px;
+        font-weight: 700;
+        color: #f1f5f9;
+        letter-spacing: -0.3px;
+        line-height: 1.2;
+      }
+
+      .header-tagline {
+        font-size: 15px;
+        color: rgba(255, 255, 255, 0.3);
+        font-weight: 400;
+      }
     }
   }
 
