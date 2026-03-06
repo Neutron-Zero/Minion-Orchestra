@@ -23,7 +23,14 @@
     </div>
 
     <div class="insight-card">
-      <h4>Activity Pulse</h4>
+      <div class="card-header">
+        <h4>Activity Pulse</h4>
+        <app-time-range-selector
+          [ranges]="pulseTimeRanges"
+          [selected]="selectedPulseRange"
+          (rangeChange)="setPulseTimeRange($event)">
+        </app-time-range-selector>
+      </div>
       <div class="chart-container">
         <canvas #pulseCanvas></canvas>
       </div>

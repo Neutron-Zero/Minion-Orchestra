@@ -793,8 +793,64 @@ async def insights_models():
         return {"success": False, "error": str(e)}
 
 
+@router.get("/api/insights/activity-pulse")
+async def insights_activity_pulse(minutes: float = 1):
+    """Bucket events into ~60 time slots with tool/log/status-change counts."""
+    try:
+        now = datetime.now()
+        range_start = now - timedelta(minutes=minutes)
+        events = await db.get_events(limit=100000, since=range_start.isoformat())
+
+        TOOL_EVENTS = {"PreToolUse", "PostToolUse"}
+        STATUS_EVENTS = {"SessionStart", "SessionEnd", "Stop", "UserPromptSubmit",
+                         "PermissionRequest", "PostToolUseFailure", "SubagentStart", "SubagentStop"}
+
+        num_points = 60
+        total_seconds = minutes * 60
+        slot_seconds = total_seconds / num_points
+
+        # Initialize buckets
+        tool_counts = [0] * num_points
+        log_counts = [0] * num_points
+        status_counts = [0] * num_points
+
+        for event in events:
+            ts_str = event.get("timestamp", "")
+            if not ts_str:
+                continue
+            try:
+                ts = datetime.fromisoformat(ts_str)
+            except (ValueError, TypeError):
+                continue
+            offset = (ts - range_start).total_seconds()
+            if offset < 0 or offset >= total_seconds:
+                continue
+            slot = min(int(offset / slot_seconds), num_points - 1)
+            event_type = event.get("event_type", "")
+            if event_type in TOOL_EVENTS:
+                tool_counts[slot] += 1
+            elif event_type in STATUS_EVENTS:
+                status_counts[slot] += 1
+            else:
+                log_counts[slot] += 1
+
+        history = []
+        for i in range(num_points):
+            t = range_start + timedelta(seconds=i * slot_seconds)
+            history.append({
+                "timestamp": t.isoformat(),
+                "toolActivity": tool_counts[i],
+                "logActivity": log_counts[i],
+                "statusChanges": status_counts[i],
+            })
+
+        return {"success": True, "history": history}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 @router.get("/api/insights/status-history")
-async def insights_status_history(minutes: int = 1):
+async def insights_status_history(minutes: float = 1):
     """Derive agent status counts over time from the events table."""
     try:
         # Use naive local time to match how events are stored in the DB

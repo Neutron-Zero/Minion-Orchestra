@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, Cha
 import { HttpClient } from '@angular/common/http';
 import { Subscription, forkJoin } from 'rxjs';
 import { Chart, registerables } from 'chart.js';
-import { AgentMonitorService, Agent, LogEntry } from '../services/agent-monitor.service';
+import { AgentMonitorService, Agent } from '../services/agent-monitor.service';
 import { environment } from '../../environments/environment';
 import { TimeRange } from '../shared/time-range-selector/time-range-selector.component';
 
@@ -58,19 +58,28 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
   ];
   selectedStatusRange = 1;
 
+  pulseTimeRanges: TimeRange[] = [
+    { label: '10s', minutes: 10 / 60 },
+    { label: '30s', minutes: 0.5 },
+    { label: '1m', minutes: 1 },
+    { label: '5m', minutes: 5 },
+  ];
+  selectedPulseRange = 1;
+
   _visibleTicks = new Map<number, string>();
+  _pulseVisibleTicks = new Map<number, string>();
   private dailyChart?: Chart;
   private pulseChart?: Chart;
   private statusChart?: Chart;
   private statusOverTimeChart?: Chart;
   private agentSub?: Subscription;
-  private logSub?: Subscription;
   private statusRefreshTimer?: any;
   private statusStreamTimer?: any;
+  private pulseStreamTimer?: any;
   private statusData: { idle: number; working: number; waiting: number; failed: number }[] = [];
   private statusSeeded = false;
-  private pulseHistory: { timestamp: number; toolActivity: number; logActivity: number; statusChanges: number }[] = [];
-  private maxPulsePoints = 50;
+  private pulseData: { toolActivity: number; logActivity: number; statusChanges: number }[] = [];
+  private pulseSeeded = false;
 
   constructor(
     private http: HttpClient,
@@ -82,12 +91,7 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadInsights();
 
     this.agentSub = this.agentService.getAgents().subscribe(agents => {
-      this.updatePulseChart(agents);
       this.updateDoughnutChart(agents);
-    });
-
-    this.logSub = this.agentService.getLogs().subscribe(logs => {
-      this.updatePulseFromLogs(logs);
     });
   }
 
@@ -96,10 +100,10 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.initStatusCharts();
     this.loadStatusHistory();
     this.startStatusUpdates();
-    // Seed charts with current data (subscription may have fired before charts existed)
-    const agents = this.agentService.getAgentsSnapshot();
-    this.updatePulseChart(agents);
-    this.updateDoughnutChart(agents);
+    this.loadPulseHistory();
+    this.startPulseUpdates();
+    // Seed doughnut with current data
+    this.updateDoughnutChart(this.agentService.getAgentsSnapshot());
   }
 
   ngOnDestroy(): void {
@@ -108,8 +112,16 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.statusChart?.destroy();
     this.statusOverTimeChart?.destroy();
     this.agentSub?.unsubscribe();
-    this.logSub?.unsubscribe();
     this.stopStatusUpdates();
+    this.stopPulseUpdates();
+  }
+
+  setPulseTimeRange(minutes: number): void {
+    this.selectedPulseRange = minutes;
+    this.pulseSeeded = false;
+    this.loadPulseHistory();
+    this.startPulseUpdates();
+    this.cdr.markForCheck();
   }
 
   setStatusTimeRange(minutes: number): void {
@@ -223,13 +235,24 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        animation: { duration: 0 },
+        animation: { duration: 100 },
         interaction: { intersect: false, mode: 'index' },
         scales: {
-          x: { display: false, grid: { display: false } },
+          x: {
+            ticks: {
+              color: 'rgba(255,255,255,0.5)',
+              font: { size: 12 },
+              maxRotation: 0,
+              autoSkip: false,
+              callback: ((_val: any, index: number): string => {
+                return this._pulseVisibleTicks.get(index) ?? '';
+              })
+            },
+            grid: { display: false }
+          },
           y: {
-            beginAtZero: true, max: 10,
-            ticks: { color: 'rgba(255,255,255,0.5)', stepSize: 2, font: { size: 11 } },
+            beginAtZero: true,
+            ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 } },
             grid: { color: 'rgba(255,255,255,0.1)' }
           }
         },
@@ -396,36 +419,80 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.statusOverTimeChart.update();
   }
 
-  private updatePulseChart(agents: Agent[]): void {
-    if (!this.pulseChart) return;
+  private loadPulseHistory(): void {
+    this.http.get<any>(`${environment.serverUrl}/api/insights/activity-pulse`, {
+      params: { minutes: this.selectedPulseRange }
+    }).subscribe({
+      next: (res) => {
+        if (!res.success || !this.pulseChart?.canvas) return;
+        const history: { toolActivity: number; logActivity: number; statusChanges: number }[] = res.history || [];
+        this.pulseData = history.map(s => ({ toolActivity: s.toolActivity, logActivity: s.logActivity, statusChanges: s.statusChanges }));
+        this.pulseSeeded = true;
+        this.buildPulseTicks();
+        this.renderPulseChart();
+      }
+    });
+  }
 
+  private buildPulseTicks(): void {
+    const range = this.selectedPulseRange;
+    const n = this.pulseData.length;
+    let ticks: string[];
+    if (range <= 10 / 60) {
+      ticks = ['-10s', '-8s', '-6s', '-4s', '-2s', '0'];
+    } else if (range <= 0.5) {
+      ticks = ['-30s', '-20s', '-10s', '0'];
+    } else if (range <= 1) {
+      ticks = ['-60s', '-50s', '-40s', '-30s', '-20s', '-10s', '0'];
+    } else {
+      ticks = ['-5m', '-4m', '-3m', '-2m', '-1m', '0'];
+    }
+    this._pulseVisibleTicks = new Map<number, string>();
+    for (let t = 0; t < ticks.length; t++) {
+      const idx = Math.round(t * (n - 1) / (ticks.length - 1));
+      this._pulseVisibleTicks.set(idx, ticks[t]);
+    }
+  }
+
+  private renderPulseChart(): void {
+    if (!this.pulseChart?.canvas) return;
+    const data = this.pulseData;
+    this.pulseChart.data.labels = data.map(() => '');
+    this.pulseChart.data.datasets[0].data = data.map(s => s.toolActivity);
+    this.pulseChart.data.datasets[1].data = data.map(s => s.logActivity);
+    this.pulseChart.data.datasets[2].data = data.map(s => s.statusChanges);
+    this.pulseChart.update();
+  }
+
+  private stopPulseUpdates(): void {
+    if (this.pulseStreamTimer) { clearInterval(this.pulseStreamTimer); this.pulseStreamTimer = undefined; }
+  }
+
+  private startPulseUpdates(): void {
+    this.stopPulseUpdates();
+    // Stream new points from live agent data
+    const intervalMs = this.selectedPulseRange <= 0.5 ? 1000 : 2000;
+    this.pulseStreamTimer = setInterval(() => this.pushPulseDataPoint(), intervalMs);
+  }
+
+  private pushPulseDataPoint(): void {
+    if (!this.pulseSeeded || !this.pulseChart?.canvas) return;
+    const agents = this.agentService.getAgentsSnapshot();
     const now = Date.now();
     const toolActivity = agents.filter(a => a.currentTool && a.status === 'working').length;
     const statusChanges = agents.filter(a => {
       if (!a.lastActivity) return false;
       return (now - new Date(a.lastActivity).getTime()) < 10000;
     }).length;
-
-    this.pulseHistory.push({
-      timestamp: now,
+    this.pulseData.push({
       toolActivity: toolActivity * 2,
       logActivity: 0,
-      statusChanges: statusChanges * 1.5
+      statusChanges: statusChanges * 1.5,
     });
-
-    if (this.pulseHistory.length > this.maxPulsePoints) {
-      this.pulseHistory.shift();
+    if (this.pulseData.length > 60) {
+      this.pulseData.shift();
     }
-
-    const labels = this.pulseHistory.map((_, i) => i.toString());
-    this.pulseChart.data.labels = labels;
-    this.pulseChart.data.datasets[0].data = this.pulseHistory.map(h => h.toolActivity);
-    this.pulseChart.data.datasets[1].data = this.pulseHistory.map(h => h.logActivity);
-    this.pulseChart.data.datasets[2].data = this.pulseHistory.map(h => h.statusChanges);
-
-    if (this.pulseChart.canvas) {
-      this.pulseChart.update('none');
-    }
+    this.renderPulseChart();
   }
 
   private updateDoughnutChart(agents: Agent[]): void {
@@ -438,21 +505,6 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
       agents.filter(a => a.status === 'failed').length,
     ];
     this.statusChart.update();
-  }
-
-  private updatePulseFromLogs(logs: LogEntry[]): void {
-    if (!this.pulseChart || this.pulseHistory.length === 0) return;
-
-    const now = Date.now();
-    const recentLogs = logs.filter(log => (now - new Date(log.timestamp).getTime()) < 5000);
-
-    const lastIndex = this.pulseHistory.length - 1;
-    this.pulseHistory[lastIndex].logActivity = Math.min(recentLogs.length, 10);
-    this.pulseChart.data.datasets[1].data = this.pulseHistory.map(h => h.logActivity);
-
-    if (this.pulseChart.canvas) {
-      this.pulseChart.update('none');
-    }
   }
 
   private createDailyChart(): void {
