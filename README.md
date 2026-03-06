@@ -4,24 +4,29 @@
 
 Real-time monitoring dashboard for AI coding agents. Track what your agents are doing, what tools they're calling, and why they made decisions -- all from a single dashboard.
 
-<!-- TODO: Hero screenshot - Kanban board with agents in multiple status columns, subagents visible -->
-<!-- TODO: Screenshot - Agent Detail page showing transcript tab with conversation + tool calls -->
-<!-- TODO: Screenshot - Agent Timeline with swim lanes showing concurrent agents over time -->
-<!-- TODO: Screenshot - Insights page with activity heatmap and daily activity chart -->
+## Real-time Agent Monitoring
 
-## Features
+Kanban board with status columns (idle, working, waiting, failed, completed). Subagent tracking with parent-child hierarchy and inline display. HITL permission panel with Yes/No buttons and freeform input to approve, deny, or respond to agent permission requests directly from the dashboard. macOS native notifications for permission requests, failures, and completions.
 
-- **Kanban board** -- agents organized by status (idle, working, waiting, failed, completed)
-- **Agent timeline** -- swim lanes showing per-agent activity over configurable time ranges
-- **Agent detail** -- deep dive with activity log, event stream, and conversation transcript
-- **Transcript viewing** -- full conversation history with collapsible tool calls
-- **Session history** -- searchable archive of all past sessions with export (JSON/CSV)
-- **Prompt history** -- searchable log of all prompts sent to agents
-- **Insights** -- activity heatmap, daily activity chart, real-time activity pulse
-- **Subagent tracking** -- parent-child hierarchy with inline display
-- **macOS notifications** -- native alerts for permission requests, failures, and completions
-- **Terminal control** -- focus agent terminals and send input from the dashboard
-- **Event stream** -- real-time filterable stream of all hook events
+![Kanban Board](packages/client/src/assets/screenshots/mo-kanban.png)
+
+## Agent Timeline
+
+Per-agent swim lanes showing activity over configurable time ranges (1m to 24h). The timeline moves in real time -- watch agents work, wait, and complete as it happens. Status-colored segments show working, waiting, and failed periods. Subagent segments display inline under their parent.
+
+![Agent Timeline](packages/client/src/assets/screenshots/mo-timeline.png)
+
+## Agent Detail & Transcript
+
+Deep dive into any agent session with activity log, event stream, and full conversation transcript. Collapsible tool call blocks with input/output, search filtering, and auto-scroll.
+
+![Agent Detail](packages/client/src/assets/screenshots/mo-agent-details.png)
+
+## Insights & History
+
+Activity heatmap (7d/15d/30d), daily activity chart, real-time activity pulse, agent status over time, and status distribution. All charts seed from historical data and stream live updates. Searchable session archive with filtering and export (JSON/CSV).
+
+![Insights](packages/client/src/assets/screenshots/mo-insights.png)
 
 ## Supported Agents
 
