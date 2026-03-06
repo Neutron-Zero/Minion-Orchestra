@@ -4,6 +4,7 @@ import { Subscription, forkJoin } from 'rxjs';
 import { Chart, registerables } from 'chart.js';
 import { AgentMonitorService, Agent, LogEntry } from '../services/agent-monitor.service';
 import { environment } from '../../environments/environment';
+import { TimeRange } from '../shared/time-range-selector/time-range-selector.component';
 
 Chart.register(...registerables);
 
@@ -27,6 +28,8 @@ interface InsightsStats {
 export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('dailyCanvas') dailyCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('pulseCanvas') pulseCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('statusCanvas') statusCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('statusOverTimeCanvas') statusOverTimeCanvas!: ElementRef<HTMLCanvasElement>;
 
   dailyData: DailyEntry[] = [];
   heatmapRows: HeatmapRow[] = [];
@@ -44,10 +47,28 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     mostActiveDay: '-'
   };
 
+  statusTimeRanges: TimeRange[] = [
+    { label: '1m', minutes: 1 },
+    { label: '5m', minutes: 5 },
+    { label: '15m', minutes: 15 },
+    { label: '1h', minutes: 60 },
+    { label: '6h', minutes: 360 },
+    { label: '12h', minutes: 720 },
+    { label: '24h', minutes: 1440 },
+  ];
+  selectedStatusRange = 1;
+
+  _visibleTicks = new Map<number, string>();
   private dailyChart?: Chart;
   private pulseChart?: Chart;
+  private statusChart?: Chart;
+  private statusOverTimeChart?: Chart;
   private agentSub?: Subscription;
   private logSub?: Subscription;
+  private statusRefreshTimer?: any;
+  private statusStreamTimer?: any;
+  private statusData: { idle: number; working: number; waiting: number; failed: number }[] = [];
+  private statusSeeded = false;
   private pulseHistory: { timestamp: number; toolActivity: number; logActivity: number; statusChanges: number }[] = [];
   private maxPulsePoints = 50;
 
@@ -62,6 +83,7 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.agentSub = this.agentService.getAgents().subscribe(agents => {
       this.updatePulseChart(agents);
+      this.updateDoughnutChart(agents);
     });
 
     this.logSub = this.agentService.getLogs().subscribe(logs => {
@@ -71,13 +93,69 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.initPulseChart();
+    this.initStatusCharts();
+    this.loadStatusHistory();
+    this.startStatusUpdates();
+    // Seed charts with current data (subscription may have fired before charts existed)
+    const agents = this.agentService.getAgentsSnapshot();
+    this.updatePulseChart(agents);
+    this.updateDoughnutChart(agents);
   }
 
   ngOnDestroy(): void {
     this.dailyChart?.destroy();
     this.pulseChart?.destroy();
+    this.statusChart?.destroy();
+    this.statusOverTimeChart?.destroy();
     this.agentSub?.unsubscribe();
     this.logSub?.unsubscribe();
+    this.stopStatusUpdates();
+  }
+
+  setStatusTimeRange(minutes: number): void {
+    this.selectedStatusRange = minutes;
+    this.statusSeeded = false;
+    this.loadStatusHistory();
+    this.startStatusUpdates();
+    this.cdr.markForCheck();
+  }
+
+  private stopStatusUpdates(): void {
+    if (this.statusRefreshTimer) { clearInterval(this.statusRefreshTimer); this.statusRefreshTimer = undefined; }
+    if (this.statusStreamTimer) { clearInterval(this.statusStreamTimer); this.statusStreamTimer = undefined; }
+  }
+
+  private startStatusUpdates(): void {
+    this.stopStatusUpdates();
+    if (this.selectedStatusRange >= 60) {
+      // Long ranges: re-fetch from API periodically
+      this.statusRefreshTimer = setInterval(() => this.loadStatusHistory(), 60000);
+    } else {
+      // Short ranges: stream new data points on a timer
+      let intervalMs: number;
+      if (this.selectedStatusRange <= 1) intervalMs = 1000;
+      else if (this.selectedStatusRange <= 5) intervalMs = 2000;
+      else intervalMs = 5000;
+      this.statusStreamTimer = setInterval(() => this.pushStatusDataPoint(), intervalMs);
+    }
+  }
+
+  private pushStatusDataPoint(): void {
+    if (!this.statusSeeded || !this.statusOverTimeChart?.canvas) return;
+    const agents = this.agentService.getAgentsSnapshot();
+    const waitingStatuses = ['waiting', 'awaiting-permission', 'permission-requested'];
+    const point = {
+      idle: agents.filter(a => a.status === 'idle').length,
+      working: agents.filter(a => a.status === 'working').length,
+      waiting: agents.filter(a => waitingStatuses.includes(a.status)).length,
+      failed: agents.filter(a => a.status === 'failed').length,
+    };
+    this.statusData.push(point);
+    // Keep fixed number of points (60)
+    if (this.statusData.length > 60) {
+      this.statusData.shift();
+    }
+    this.renderStatusChart();
   }
 
   loadInsights(): void {
@@ -166,6 +244,158 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  private initStatusCharts(): void {
+    if (this.statusOverTimeCanvas) {
+      this.statusOverTimeChart = new Chart(this.statusOverTimeCanvas.nativeElement, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: '  Idle',
+              data: [],
+              borderColor: '#6366f1',
+              backgroundColor: 'rgba(99, 102, 241, 0.3)',
+              tension: 0.3, borderWidth: 2, fill: true,
+              pointRadius: 0, pointHoverRadius: 4
+            },
+            {
+              label: '  Working',
+              data: [],
+              borderColor: '#4caf50',
+              backgroundColor: 'rgba(76, 175, 80, 0.3)',
+              tension: 0.3, borderWidth: 2, fill: true,
+              pointRadius: 0, pointHoverRadius: 4
+            },
+            {
+              label: '  Waiting for Input',
+              data: [],
+              borderColor: '#ffc107',
+              backgroundColor: 'rgba(255, 193, 7, 0.3)',
+              tension: 0.3, borderWidth: 2, fill: true,
+              pointRadius: 0, pointHoverRadius: 4
+            },
+            {
+              label: '  Failed',
+              data: [],
+              borderColor: '#f44336',
+              backgroundColor: 'rgba(244, 67, 54, 0.3)',
+              tension: 0.3, borderWidth: 2, fill: true,
+              pointRadius: 0, pointHoverRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 100 },
+          scales: {
+            x: {
+              ticks: {
+                color: 'rgba(255,255,255,0.5)',
+                font: { size: 12 },
+                maxRotation: 0,
+                autoSkip: false,
+                callback: ((_val: any, index: number): string => {
+                  return this._visibleTicks.get(index) ?? '';
+                })
+              },
+              grid: { display: false }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 12 }, stepSize: 1 },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            }
+          },
+          plugins: {
+            title: { display: false },
+            legend: { position: 'bottom', labels: { color: '#ffffff', usePointStyle: true, pointStyle: 'circle', padding: 20 } }
+          }
+        }
+      });
+    }
+
+    if (this.statusCanvas) {
+      this.statusChart = new Chart(this.statusCanvas.nativeElement, {
+        type: 'doughnut',
+        data: {
+          labels: ['  Idle', '  Working', '  Waiting for Input', '  Failed'],
+          datasets: [{
+            data: [0, 0, 0, 0],
+            backgroundColor: ['#6366f1', '#4caf50', '#ffc107', '#f44336'],
+            borderColor: ['#6366f1', '#4caf50', '#ffc107', '#f44336'],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: { display: false },
+            legend: {
+              position: 'bottom',
+              maxWidth: 200,
+              labels: { color: '#ffffff', usePointStyle: true, pointStyle: 'circle', padding: 20 }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  private loadStatusHistory(): void {
+    this.http.get<any>(`${environment.serverUrl}/api/insights/status-history`, {
+      params: { minutes: this.selectedStatusRange }
+    }).subscribe({
+      next: (res) => {
+        if (!res.success || !this.statusOverTimeChart?.canvas) return;
+        const history: { timestamp: string; idle: number; working: number; waiting: number; failed: number }[] = res.history || [];
+        this.statusData = history.map(s => ({ idle: s.idle, working: s.working, waiting: s.waiting, failed: s.failed }));
+        this.statusSeeded = true;
+        this.buildStatusTicks();
+        this.renderStatusChart();
+      }
+    });
+  }
+
+  private buildStatusTicks(): void {
+    const range = this.selectedStatusRange;
+    const n = this.statusData.length;
+    let ticks: string[];
+    if (range <= 1) {
+      ticks = ['-60s', '-50s', '-40s', '-30s', '-20s', '-10s', '0'];
+    } else if (range <= 5) {
+      ticks = ['-5m', '-4m', '-3m', '-2m', '-1m', '0'];
+    } else if (range <= 15) {
+      ticks = ['-15m', '-10m', '-5m', '0'];
+    } else if (range <= 60) {
+      ticks = ['-60m', '-50m', '-40m', '-30m', '-20m', '-10m', '0'];
+    } else if (range <= 360) {
+      ticks = ['-6h', '-5h', '-4h', '-3h', '-2h', '-1h', '0'];
+    } else if (range <= 720) {
+      ticks = ['-12h', '-10h', '-8h', '-6h', '-4h', '-2h', '0'];
+    } else {
+      ticks = ['-24h', '-20h', '-16h', '-12h', '-8h', '-4h', '0'];
+    }
+    this._visibleTicks = new Map<number, string>();
+    for (let t = 0; t < ticks.length; t++) {
+      const idx = Math.round(t * (n - 1) / (ticks.length - 1));
+      this._visibleTicks.set(idx, ticks[t]);
+    }
+  }
+
+  private renderStatusChart(): void {
+    if (!this.statusOverTimeChart?.canvas) return;
+    const data = this.statusData;
+    this.statusOverTimeChart.data.labels = data.map(() => '');
+    this.statusOverTimeChart.data.datasets[0].data = data.map(s => s.idle);
+    this.statusOverTimeChart.data.datasets[1].data = data.map(s => s.working);
+    this.statusOverTimeChart.data.datasets[2].data = data.map(s => s.waiting);
+    this.statusOverTimeChart.data.datasets[3].data = data.map(s => s.failed);
+    this.statusOverTimeChart.update();
+  }
+
   private updatePulseChart(agents: Agent[]): void {
     if (!this.pulseChart) return;
 
@@ -196,6 +426,18 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.pulseChart.canvas) {
       this.pulseChart.update('none');
     }
+  }
+
+  private updateDoughnutChart(agents: Agent[]): void {
+    if (!this.statusChart?.canvas) return;
+    const waitingStatuses = ['waiting', 'awaiting-permission', 'permission-requested'];
+    this.statusChart.data.datasets[0].data = [
+      agents.filter(a => a.status === 'idle').length,
+      agents.filter(a => a.status === 'working').length,
+      agents.filter(a => waitingStatuses.includes(a.status)).length,
+      agents.filter(a => a.status === 'failed').length,
+    ];
+    this.statusChart.update();
   }
 
   private updatePulseFromLogs(logs: LogEntry[]): void {
@@ -249,7 +491,6 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private buildHeatmapRows(heatmapData: HeatmapEntry[]): void {
-    // Build lookup: "YYYY-MM-DD|HH" -> count
     const lookup = new Map<string, number>();
     for (const entry of heatmapData) {
       const parts = entry.key.split('T');
@@ -258,7 +499,6 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
       lookup.set(key, (lookup.get(key) || 0) + entry.count);
     }
 
-    // Generate last 30 days
     const days: string[] = [];
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const today = new Date();
@@ -268,7 +508,6 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
       days.push(d.toISOString().slice(0, 10));
     }
 
-    // Day labels: show date for 1st of each month or every ~5 days
     this.heatmapDayLabels = days.map((dateStr, i) => {
       const d = new Date(dateStr + 'T00:00:00');
       const dayNum = d.getDate();
@@ -278,7 +517,6 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
       return '';
     });
 
-    // Compute counts first to find max
     const hourLabels = ['12a','2a','4a','6a','8a','10a','12p','2p','4p','6p','8p','10p'];
     const grid: { label: string; count: number }[][] = [];
     let maxCount = 0;
@@ -294,7 +532,6 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
       }));
     }
 
-    // Build rows with dynamic color scaling
     this.heatmapRows = grid.map((cells, row) => ({
       label: hourLabels[row],
       cells: cells.map(cell => ({
@@ -306,7 +543,6 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private getHeatmapColor(count: number, max: number): string {
     if (count === 0) return 'rgba(255, 255, 255, 0.03)';
-    // Square root scale to spread color range across skewed data
     const ratio = Math.sqrt(count / max);
     if (ratio <= 0.25) return 'rgba(124, 58, 237, 0.2)';
     if (ratio <= 0.5) return 'rgba(124, 58, 237, 0.4)';

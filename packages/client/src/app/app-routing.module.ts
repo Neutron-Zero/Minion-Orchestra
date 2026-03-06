@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { OverviewComponent } from './overview/overview.component';
+import { InsightsComponent } from './insights/insights.component';
 import { LogsComponent } from './logs/logs.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { SettingsPageComponent } from './settings-page/settings-page.component';
@@ -13,7 +13,7 @@ const routes: Routes = [
   { path: '', redirectTo: '/agents', pathMatch: 'full' },
   { path: 'agents', component: AnalyticsComponent },
   { path: 'agent/:id', component: AgentDetailComponent },
-  { path: 'insights', component: OverviewComponent },
+  { path: 'insights', component: InsightsComponent },
   { path: 'activity', component: LogsComponent },
   { path: 'archive', component: HistoryComponent },
   { path: 'prompts', component: PromptHistoryComponent },

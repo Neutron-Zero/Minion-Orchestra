@@ -1,6 +1,27 @@
 <div class="insights-page">
 
   <div class="insights-grid">
+    <div class="insight-card status-card">
+      <h4>Agent Status</h4>
+      <div class="chart-container">
+        <canvas #statusCanvas></canvas>
+      </div>
+    </div>
+
+    <div class="insight-card status-over-time-card">
+      <div class="card-header">
+        <h4>Agent Status Over Time</h4>
+        <app-time-range-selector
+          [ranges]="statusTimeRanges"
+          [selected]="selectedStatusRange"
+          (rangeChange)="setStatusTimeRange($event)">
+        </app-time-range-selector>
+      </div>
+      <div class="chart-container">
+        <canvas #statusOverTimeCanvas></canvas>
+      </div>
+    </div>
+
     <div class="insight-card">
       <h4>Activity Pulse</h4>
       <div class="chart-container">

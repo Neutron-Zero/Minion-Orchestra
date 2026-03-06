@@ -26,8 +26,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 
 import { LogViewerComponent } from './log-viewer/log-viewer.component';
-import { ChartsComponent } from './charts/charts.component';
-import { OverviewComponent } from './overview/overview.component';
+import { TimeRangeSelectorComponent } from './shared/time-range-selector/time-range-selector.component';
 import { LogsComponent } from './logs/logs.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { SettingsPageComponent } from './settings-page/settings-page.component';
@@ -43,8 +42,7 @@ import { AgentTimelineComponent } from './agent-timeline/agent-timeline.componen
   declarations: [
     AppComponent,
     LogViewerComponent,
-    ChartsComponent,
-    OverviewComponent,
+    TimeRangeSelectorComponent,
     LogsComponent,
     AnalyticsComponent,
     SettingsPageComponent,

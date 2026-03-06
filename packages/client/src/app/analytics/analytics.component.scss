@@ -35,40 +35,6 @@
 }
 
 
-.range-group {
-  display: flex;
-  gap: 0;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.range-btn {
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.4);
-  font: inherit;
-  font-weight: 600;
-  padding: 5px 10px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-
-  &:last-child {
-    border-right: none;
-  }
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  &.active {
-    background: rgba(124, 58, 237, 0.2);
-    color: #a78bfa;
-  }
-}
-
 .view-toggle {
   display: flex;
   gap: 0;

@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -789,6 +789,71 @@ async def insights_models():
         if not versions:
             versions["unknown"] = 0
         return {"success": True, "models": [{"model": m, "count": c} for m, c in versions.items()]}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/api/insights/status-history")
+async def insights_status_history(minutes: int = 1):
+    """Derive agent status counts over time from the events table."""
+    try:
+        # Use naive local time to match how events are stored in the DB
+        now = datetime.now()
+        range_start = now - timedelta(minutes=minutes)
+        # Look back further to capture the initial state of agents active at range_start
+        lookback_start = range_start - timedelta(minutes=max(minutes, 10))
+
+        events = await db.get_events(limit=100000, since=lookback_start.isoformat())
+        events.reverse()  # chronological order
+
+        # Map event types to chart statuses (idle/working/waiting/failed/None)
+        STATUS_MAP = {
+            "SessionStart": "idle", "UserPromptSubmit": "working",
+            "PreToolUse": "working", "PostToolUse": "working",
+            "Stop": "idle", "PermissionRequest": "waiting",
+            "PostToolUseFailure": "failed", "SessionEnd": None,
+            "SubagentStart": "working", "SubagentStop": None,
+            "TaskCompleted": "idle", "PreCompact": "working",
+        }
+
+        # Build per-agent status timeline: [(iso_timestamp, status_or_None)]
+        agent_timelines: dict[str, list[tuple[str, str | None]]] = {}
+        for event in events:
+            agent_id = event.get("agent_id")
+            event_type = event.get("event_type", "")
+            ts = event.get("timestamp", "")
+            if not agent_id or not ts or event_type not in STATUS_MAP:
+                continue
+            if agent_id not in agent_timelines:
+                agent_timelines[agent_id] = []
+            agent_timelines[agent_id].append((ts, STATUS_MAP[event_type]))
+
+        # Generate ~60 sample points across the range
+        num_points = 60
+        total_seconds = minutes * 60
+        step = total_seconds / num_points
+        range_start_iso = range_start.isoformat()
+
+        history = []
+        for i in range(num_points):
+            sample_time = range_start + timedelta(seconds=i * step)
+            sample_iso = sample_time.isoformat()
+            counts = {"idle": 0, "working": 0, "waiting": 0, "failed": 0}
+
+            for timeline in agent_timelines.values():
+                # Find the most recent event at or before sample_time
+                status = None
+                for ts, s in timeline:
+                    if ts <= sample_iso:
+                        status = s
+                    else:
+                        break
+                if status and status in counts:
+                    counts[status] += 1
+
+            history.append({"timestamp": sample_iso, **counts})
+
+        return {"success": True, "history": history}
     except Exception as e:
         return {"success": False, "error": str(e)}
 

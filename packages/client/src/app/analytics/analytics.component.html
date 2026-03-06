@@ -12,14 +12,11 @@
       <span class="legend-item"><span class="legend-dot" style="background:#6e7681"></span>Completed</span>
     </div>
     <div class="header-right">
-      <div class="range-group" *ngIf="viewType === 'timeline'">
-        <button *ngFor="let r of timeRanges"
-                class="range-btn"
-                [class.active]="selectedRange === r.minutes"
-                (click)="setTimeRange(r.minutes)">
-          {{ r.label }}
-        </button>
-      </div>
+      <app-time-range-selector *ngIf="viewType === 'timeline'"
+        [ranges]="timeRanges"
+        [selected]="selectedRange"
+        (rangeChange)="setTimeRange($event)">
+      </app-time-range-selector>
       <div class="view-toggle">
         <button class="toggle-btn" [class.active]="viewType === 'kanban'" (click)="setViewType('kanban')">
           <mat-icon>view_column</mat-icon>
