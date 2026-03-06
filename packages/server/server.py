@@ -6,7 +6,6 @@ logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 import os
 import sys
-import threading
 from contextlib import asynccontextmanager
 
 
@@ -34,7 +33,7 @@ cleanup_service = CleanupService(agent_manager, task_queue, sio)
 session_watcher = SessionWatcher(agent_manager, sio)
 transcript_scanner = TranscriptScanner(sio)
 
-VERSION = "1.6.1"
+VERSION = "1.6.2"
 
 @asynccontextmanager
 async def lifespan(app):
@@ -159,74 +158,10 @@ if os.path.isdir(CLIENT_DIST):
 
 combined = socketio.ASGIApp(sio, other_asgi_app=app)
 
-# Register as macOS app with dock icon
-_ns_app = None
-if sys.platform == 'darwin':
-    try:
-        from AppKit import NSImage, NSApplication
-        from Foundation import NSDefaultRunLoopMode
-
-        _logo_path = os.path.join(os.path.dirname(__file__), "..", "MinionOrchestra.app", "Contents", "Resources", "icon.icns")
-        _ns_app = NSApplication.sharedApplication()
-        _ns_app.setActivationPolicy_(0)
-        if os.path.exists(_logo_path):
-            _icon = NSImage.alloc().initWithContentsOfFile_(_logo_path)
-            _ns_app.setApplicationIconImage_(_icon)
-        _ns_app.finishLaunching()
-        # Drain pending events so dock icon stops bouncing
-        while True:
-            _evt = _ns_app.nextEventMatchingMask_untilDate_inMode_dequeue_(
-                0xFFFFFFFF, None, NSDefaultRunLoopMode, True)
-            if _evt is None:
-                break
-            _ns_app.sendEvent_(_evt)
-        _ns_app.updateWindows()
-    except Exception:
-        pass
-
 
 if __name__ == "__main__":
-    if _ns_app is not None:
-        # Run uvicorn in a background thread, keep main thread for macOS events
-        import signal
-        from Foundation import NSDate, NSDefaultRunLoopMode
-
-        _running = True
-
-        def _shutdown(signum, frame):
-            global _running
-            _running = False
-
-        signal.signal(signal.SIGTERM, _shutdown)
-        signal.signal(signal.SIGINT, _shutdown)
-
-        # Register app delegate to handle Quit from dock menu
-        from AppKit import NSObject
-        class _QuitDelegate(NSObject):
-            def applicationShouldTerminate_(self, sender):
-                global _running
-                _running = False
-                return False  # We handle shutdown ourselves
-        _quit_delegate = _QuitDelegate.alloc().init()
-        _ns_app.setDelegate_(_quit_delegate)
-
-        def _run_server():
-            uvicorn.run(combined, host="0.0.0.0", port=config.port, log_level="warning")
-
-        _server_thread = threading.Thread(target=_run_server, daemon=True)
-        _server_thread.start()
-
-        # Main thread pumps macOS events
-        while _running:
-            _evt = _ns_app.nextEventMatchingMask_untilDate_inMode_dequeue_(
-                0xFFFFFFFF, NSDate.dateWithTimeIntervalSinceNow_(0.1),
-                NSDefaultRunLoopMode, True)
-            if _evt is not None:
-                _ns_app.sendEvent_(_evt)
-        os._exit(0)
-    else:
-        try:
-            uvicorn.run(combined, host="0.0.0.0", port=config.port, log_level="warning")
-        except (KeyboardInterrupt, SystemExit):
-            pass
+    try:
+        uvicorn.run(combined, host="0.0.0.0", port=config.port, log_level="warning")
+    except (KeyboardInterrupt, SystemExit):
+        pass
 

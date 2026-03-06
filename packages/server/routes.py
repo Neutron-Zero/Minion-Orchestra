@@ -797,17 +797,21 @@ async def insights_models():
 async def insights_activity_pulse(minutes: float = 1):
     """Bucket events into ~60 time slots with tool/log/status-change counts."""
     try:
+        num_points = 60
+        total_seconds = minutes * 60
+        slot_seconds = total_seconds / num_points
+
+        # Align range_start to slot boundary so buckets are stable across reloads
         now = datetime.now()
-        range_start = now - timedelta(minutes=minutes)
+        epoch = now.timestamp()
+        aligned_epoch = epoch - (epoch % slot_seconds) + slot_seconds
+        range_start = datetime.fromtimestamp(aligned_epoch - total_seconds)
+
         events = await db.get_events(limit=100000, since=range_start.isoformat())
 
         TOOL_EVENTS = {"PreToolUse", "PostToolUse"}
         STATUS_EVENTS = {"SessionStart", "SessionEnd", "Stop", "UserPromptSubmit",
                          "PermissionRequest", "PostToolUseFailure", "SubagentStart", "SubagentStop"}
-
-        num_points = 60
-        total_seconds = minutes * 60
-        slot_seconds = total_seconds / num_points
 
         # Initialize buckets
         tool_counts = [0] * num_points
