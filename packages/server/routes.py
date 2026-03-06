@@ -915,9 +915,10 @@ async def insights_status_history(minutes: float = 1):
 
 
 @router.get("/api/insights/heatmap")
-async def insights_heatmap():
+async def insights_heatmap(days: int = 30):
     try:
-        events = await db.get_events(limit=50000)
+        since = (datetime.now() - timedelta(days=days)).isoformat()
+        events = await db.get_events(limit=100000, since=since)
         heatmap: dict[str, int] = {}
         for event in events:
             ts = event.get("timestamp", "")

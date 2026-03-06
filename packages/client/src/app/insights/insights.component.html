@@ -37,7 +37,14 @@
     </div>
 
     <div class="insight-card heatmap-card">
-      <h4>Hourly Activity</h4>
+      <div class="card-header">
+        <h4>Activity History</h4>
+        <app-time-range-selector
+          [ranges]="heatmapTimeRanges"
+          [selected]="selectedHeatmapRange"
+          (rangeChange)="setHeatmapRange($event)">
+        </app-time-range-selector>
+      </div>
       <div class="heatmap-container" *ngIf="heatmapRows.length > 0">
         <div class="heatmap-day-headers">
           <span class="heatmap-label"></span>
@@ -52,7 +59,8 @@
               class="heatmap-cell"
               *ngFor="let cell of row.cells; trackBy: trackByCell"
               [style.background]="cell.color"
-              [title]="cell.label + ': ' + cell.count + ' events'">
+              [matTooltip]="cell.count + ' events'"
+              matTooltipPosition="above">
             </div>
           </div>
         </div>

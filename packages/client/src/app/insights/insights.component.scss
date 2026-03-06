@@ -87,8 +87,8 @@
   }
 
   .heatmap-day-label {
-    width: 12px;
-    flex-shrink: 0;
+    flex: 1;
+    min-width: 0;
     font-size: 11px;
     color: rgba(255, 255, 255, 0.45);
     text-align: left;
@@ -122,10 +122,10 @@
   }
 
   .heatmap-cell {
-    width: 12px;
+    flex: 1;
+    min-width: 0;
     height: 12px;
     border-radius: 2px;
-    flex-shrink: 0;
     cursor: default;
     transition: opacity 0.15s ease;
 

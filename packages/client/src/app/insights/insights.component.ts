@@ -56,7 +56,14 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     { label: '12h', minutes: 720 },
     { label: '24h', minutes: 1440 },
   ];
-  selectedStatusRange = 1;
+  selectedStatusRange = parseFloat(localStorage.getItem('mo_status_range') || '1');
+
+  heatmapTimeRanges: TimeRange[] = [
+    { label: '7d', minutes: 7 },
+    { label: '15d', minutes: 15 },
+    { label: '30d', minutes: 30 },
+  ];
+  selectedHeatmapRange = parseInt(localStorage.getItem('mo_heatmap_range') || '30', 10);
 
   pulseTimeRanges: TimeRange[] = [
     { label: '10s', minutes: 10 / 60 },
@@ -64,7 +71,7 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     { label: '1m', minutes: 1 },
     { label: '5m', minutes: 5 },
   ];
-  selectedPulseRange = 1;
+  selectedPulseRange = parseFloat(localStorage.getItem('mo_pulse_range') || '1');
 
   _visibleTicks = new Map<number, string>();
   _pulseVisibleTicks = new Map<number, string>();
@@ -116,8 +123,16 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.stopPulseUpdates();
   }
 
+  setHeatmapRange(days: number): void {
+    this.selectedHeatmapRange = days;
+    localStorage.setItem('mo_heatmap_range', String(days));
+    this.loadHeatmap();
+    this.cdr.markForCheck();
+  }
+
   setPulseTimeRange(minutes: number): void {
     this.selectedPulseRange = minutes;
+    localStorage.setItem('mo_pulse_range', String(minutes));
     this.pulseSeeded = false;
     this.loadPulseHistory();
     this.startPulseUpdates();
@@ -126,6 +141,7 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   setStatusTimeRange(minutes: number): void {
     this.selectedStatusRange = minutes;
+    localStorage.setItem('mo_status_range', String(minutes));
     this.statusSeeded = false;
     this.loadStatusHistory();
     this.startStatusUpdates();
@@ -171,20 +187,28 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   loadInsights(): void {
-    forkJoin({
-      daily: this.http.get<any>(`${environment.serverUrl}/api/insights/daily`, { params: { days: 30 } }),
-      heatmap: this.http.get<any>(`${environment.serverUrl}/api/insights/heatmap`),
-    }).subscribe({
-      next: ({ daily, heatmap }) => {
+    this.http.get<any>(`${environment.serverUrl}/api/insights/daily`, { params: { days: 30 } }).subscribe({
+      next: (daily) => {
         if (daily.success) this.dailyData = daily.daily || [];
-        if (heatmap.success) {
-          this.buildHeatmapRows(heatmap.heatmap || []);
-        }
         this.computeStats();
         this.cdr.markForCheck();
         setTimeout(() => this.createDailyChart(), 100);
       },
       error: (err) => console.error('Error loading insights:', err)
+    });
+    this.loadHeatmap();
+  }
+
+  private loadHeatmap(): void {
+    this.http.get<any>(`${environment.serverUrl}/api/insights/heatmap`, {
+      params: { days: this.selectedHeatmapRange }
+    }).subscribe({
+      next: (res) => {
+        if (res.success) {
+          this.buildHeatmapRows(res.heatmap || [], this.selectedHeatmapRange);
+        }
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -542,7 +566,7 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  private buildHeatmapRows(heatmapData: HeatmapEntry[]): void {
+  private buildHeatmapRows(heatmapData: HeatmapEntry[], numDays: number): void {
     const lookup = new Map<string, number>();
     for (const entry of heatmapData) {
       const parts = entry.key.split('T');
@@ -554,16 +578,17 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     const days: string[] = [];
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const today = new Date();
-    for (let i = 29; i >= 0; i--) {
+    for (let i = numDays - 1; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       days.push(d.toISOString().slice(0, 10));
     }
 
+    const labelInterval = Math.max(1, Math.floor(numDays / 6));
     this.heatmapDayLabels = days.map((dateStr, i) => {
       const d = new Date(dateStr + 'T00:00:00');
       const dayNum = d.getDate();
-      if (dayNum === 1 || i === 0 || i % 5 === 0) {
+      if (i === 0 || i === days.length - 1 || i % labelInterval === 0) {
         return `${months[d.getMonth()]} ${dayNum}`;
       }
       return '';
