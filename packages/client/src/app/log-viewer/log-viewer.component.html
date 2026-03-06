@@ -1,0 +1,33 @@
+<div class="log-viewer panel">
+  <div class="panel-header">
+    <span class="panel-title">LIVE ACTIVITY FEED</span>
+    <div class="header-right">
+      <div class="controls">
+        <input matInput
+               placeholder="Search..."
+               [(ngModel)]="searchTerm"
+               (input)="onSearchChange(searchTerm)"
+               class="search-input">
+        <button mat-icon-button (click)="clearLogs()" matTooltip="Clear" class="control-btn">
+          <mat-icon>clear</mat-icon>
+        </button>
+      </div>
+      <div class="live-indicator" [class.connected]="isConnected">
+        <span class="live-dot"></span>
+        <span class="live-text">{{ isConnected ? 'Live' : 'Offline' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="log-container" #scrollContainer>
+    <div *ngFor="let log of filteredLogs; trackBy: trackByLog"
+         class="log-entry"
+         [style.borderLeftColor]="log._agentColor">
+      <span class="log-timestamp">{{ log._formattedTime }}</span>
+      <span class="log-agent">agent-{{ log._formattedAgent }}</span>
+      <span class="log-folder" *ngIf="log._agentName">{{ log._agentName }}</span>
+      <span class="log-message" *ngIf="log._toolParsed as parts; else plainMsg">{{ parts.before }}<span [ngClass]="'tool-name tool-' + parts.tool.toLowerCase()">{{ parts.tool }}</span>{{ parts.after }}</span>
+      <ng-template #plainMsg><span class="log-message">{{ log.message }}</span></ng-template>
+    </div>
+  </div>
+</div>

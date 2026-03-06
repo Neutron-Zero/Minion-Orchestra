@@ -1,0 +1,37 @@
+<div class="timeline-container">
+  <!-- Time axis -->
+  <div class="time-axis">
+    <div class="lane-label-spacer"></div>
+    <div class="axis-track">
+      <span *ngFor="let label of timeLabels" class="tick-label">{{ label }}</span>
+    </div>
+  </div>
+
+  <!-- Lanes -->
+  <div class="lanes-area">
+    <div *ngFor="let lane of lanes; trackBy: trackByLane" class="lane-row">
+      <div class="lane-label" [style.borderLeftColor]="lane.color">
+        <div class="label-top">
+          <span class="agent-name" (click)="viewDetails.emit(lane.agent)">{{ getFormattedAgentId(lane.agent) }}</span>
+        </div>
+        <span class="agent-task">{{ getTaskLabel(lane.agent) }}</span>
+        <span class="agent-folder">{{ getFolderName(lane.agent) }}</span>
+      </div>
+      <div class="lane-track">
+        <div *ngFor="let seg of lane.segments; trackBy: trackBySegment"
+             class="segment"
+             [style.left.%]="seg.left"
+             [style.width.%]="seg.width"
+             [style.backgroundColor]="seg.color"
+             [matTooltip]="seg.label">
+          <span class="segment-label" *ngIf="seg.width > 3">{{ seg.label }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-lanes" *ngIf="lanes.length === 0">
+      No agent activity in this time window
+    </div>
+  </div>
+
+</div>

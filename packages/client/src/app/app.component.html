@@ -1,0 +1,45 @@
+<!-- Single Header Bar -->
+<nav class="header-bar">
+  <div class="header-left">
+    <img src="assets/logo.png" alt="Minion Orchestra" class="header-logo">
+    <div class="header-title-group">
+      <span class="header-title">Minion Orchestra</span>
+      <span class="header-tagline">Real-time monitoring for AI coding agents</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="nav-links">
+      <a class="nav-link"
+         routerLink="/agents"
+         routerLinkActive="active">Agents</a>
+      <a class="nav-link"
+         routerLink="/insights"
+         routerLinkActive="active">Insights</a>
+      <a class="nav-link"
+         routerLink="/activity"
+         routerLinkActive="active">Activity</a>
+      <a class="nav-link"
+         routerLink="/archive"
+         routerLinkActive="active">Archive</a>
+      <a class="nav-link"
+         routerLink="/prompts"
+         routerLinkActive="active">Prompts</a>
+      <a class="nav-link"
+         routerLink="/plans"
+         routerLinkActive="active">Plans</a>
+      <a class="nav-link settings-link"
+         routerLink="/settings"
+         routerLinkActive="active">
+        <mat-icon>settings</mat-icon>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- Content Area -->
+<div class="page-container">
+  <div class="content-area">
+    <router-outlet></router-outlet>
+  </div>
+  <mat-icon class="watermark-icon">hub</mat-icon>
+</div>

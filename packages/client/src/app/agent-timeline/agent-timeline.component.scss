@@ -1,0 +1,150 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+// Container
+.timeline-container {
+  flex: 1;
+  min-height: 0;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+// Time axis
+.time-axis {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 0;
+}
+
+.lane-label-spacer {
+  width: 240px;
+  flex-shrink: 0;
+}
+
+.axis-track {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 12px;
+  position: relative;
+
+  .tick-label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.3);
+    font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+  }
+}
+
+// Lanes
+.lanes-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.lane-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 48px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}
+
+.lane-label {
+  width: 240px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-left: 3px solid transparent;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+
+  .label-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .agent-name {
+    font-weight: 600;
+    color: #f1f5f9;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &:hover {
+      color: #a78bfa;
+    }
+  }
+
+  .agent-task {
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 16px;
+  }
+
+  .agent-folder {
+    color: rgba(255, 255, 255, 0.35);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.lane-track {
+  flex: 1;
+  position: relative;
+  margin: 6px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  min-height: 36px;
+}
+
+.segment {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  cursor: default;
+
+  .segment-label {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    padding: 0 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+// Empty state
+.empty-lanes {
+  text-align: center;
+  padding: 48px 16px;
+  color: rgba(255, 255, 255, 0.25);
+}
+

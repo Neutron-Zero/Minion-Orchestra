@@ -1,0 +1,612 @@
+// Page container
+.agent-detail-page {
+  color: #e6edf3;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+// Loading / Error states
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 20px;
+  color: rgba(255, 255, 255, 0.5);
+
+  .spinner {
+    animation: spin 1.5s linear infinite;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 20px;
+  color: #f44336;
+
+  .retry-btn {
+    color: #a78bfa;
+    border: 1px solid rgba(124, 58, 237, 0.3);
+    margin-left: 8px;
+
+    &:hover {
+      background: rgba(124, 58, 237, 0.1);
+    }
+  }
+}
+
+// Two-column layout
+.detail-layout {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+// ─── Left Sidebar ───
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.agent-name {
+  font-weight: 600;
+  color: #f1f5f9;
+  letter-spacing: 0.3px;
+}
+
+.status-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid currentColor;
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section-label {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 600;
+}
+
+.section-value {
+  color: #e6edf3;
+  line-height: 1.5;
+}
+
+.tool-pill {
+  display: inline-block;
+  align-self: flex-start;
+  background: rgba(124, 58, 237, 0.15);
+  color: #a78bfa;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.subagent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subagent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.subagent-name {
+  color: #a78bfa;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subagent-status {
+  color: rgba(255, 255, 255, 0.35);
+  margin-left: auto;
+  flex-shrink: 0;
+  text-transform: capitalize;
+}
+
+.meta-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-icon {
+  color: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+}
+
+.meta-value {
+  color: #8b949e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ─── Right Column (approval + main panel) ───
+.right-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+// ─── Sidebar Approval (compact HITL) ───
+.sidebar-approval {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-approval-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-approval-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.approve-btn, .deny-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 5px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+
+  &:hover { opacity: 0.85; }
+  &.compact { flex: 1; }
+}
+
+.approve-btn {
+  background: #2ea043;
+  color: #fff;
+}
+
+.deny-btn {
+  background: #da3633;
+  color: #fff;
+}
+
+.sidebar-approval-input {
+  display: flex;
+  gap: 6px;
+}
+
+.freeform-input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  padding: 6px 10px;
+  color: #e6edf3;
+  font: inherit;
+  outline: none;
+
+  &::placeholder { color: rgba(255, 255, 255, 0.3); }
+  &:focus { border-color: rgba(255, 193, 7, 0.5); }
+  &.compact { resize: none; }
+}
+
+.send-btn {
+  padding: 4px 10px;
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+  border: 1px solid rgba(255, 193, 7, 0.25);
+  border-radius: 5px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  align-self: flex-end;
+
+  &:hover:not(:disabled) { opacity: 0.85; }
+  &:disabled { opacity: 0.4; cursor: default; }
+}
+
+// ─── Right Main Panel ───
+.main-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+// Tab bar
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &.active {
+    color: #a78bfa;
+    border-bottom-color: #a78bfa;
+  }
+
+  &:hover:not(.active) {
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+.tab-count {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+// Panel content area — scrollable
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+// ─── Activity Log ───
+.log-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 20px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  line-height: 1.5;
+  transition: background 0.1s ease;
+
+  &.odd {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+}
+
+.log-timestamp {
+  color: #6e7681;
+  flex-shrink: 0;
+  min-width: 100px;
+}
+
+.level-icon {
+  flex-shrink: 0;
+  position: relative;
+  top: 2px;
+}
+
+.log-message {
+  color: #8b949e;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.tool-highlight {
+  background: rgba(124, 58, 237, 0.15);
+  color: #a78bfa;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: inline-block;
+  vertical-align: baseline;
+  line-height: 1.4;
+}
+
+// ─── Transcript ───
+.transcript-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.transcript-search {
+  margin-left: auto;
+  align-self: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 5px 10px;
+  color: #e6edf3;
+  outline: none;
+  width: 200px;
+  height: auto;
+  margin-right: 12px;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  &:focus {
+    border-color: rgba(124, 58, 237, 0.5);
+  }
+}
+
+.transcript-chat {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+// Chat Bubbles
+.chat-bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  line-height: 1.6;
+}
+
+.user-bubble {
+  align-self: flex-end;
+  background: rgba(33, 150, 243, 0.12);
+  border: 1px solid rgba(33, 150, 243, 0.18);
+}
+
+.assistant-bubble {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.thinking-bubble {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.bubble-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.bubble-role {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.45);
+
+  &.dim { color: rgba(255, 255, 255, 0.25); }
+}
+
+.bubble-time {
+  color: rgba(255, 255, 255, 0.2);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.bubble-content {
+  color: #e6edf3;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.thinking-text {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+
+.thinking-icon {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+// Tool calls
+.tool-call-block, .tool-result-block {
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.tool-call-block {
+  background: rgba(124, 58, 237, 0.06);
+  border: 1px solid rgba(124, 58, 237, 0.12);
+}
+
+.tool-result-block {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-left: 16px;
+}
+
+.tool-header, .tool-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-icon {
+  color: #a78bfa;
+}
+
+.result-icon {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.tool-name {
+  font-weight: 600;
+  color: #a78bfa;
+}
+
+.result-label {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.tool-summary, .result-preview {
+  color: rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-detail, .tool-result-content {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tool-json, .result-text {
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  color: #8b949e;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 0;
+}
+
+.clickable { cursor: pointer; }
+
+.expand-icon {
+  color: rgba(255, 255, 255, 0.25);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+// Empty state
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 60px 20px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+// Scrollbar styling
+.transcript-chat, .panel-content, .sidebar {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .agent-detail-page {
+    padding: 12px;
+    height: auto;
+    overflow: auto;
+  }
+
+  .detail-layout {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .sidebar {
+    width: 100%;
+  }
+
+  .main-panel {
+    min-height: 500px;
+  }
+}

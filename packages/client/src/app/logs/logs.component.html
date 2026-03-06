@@ -1,0 +1,99 @@
+<div class="event-stream-page">
+  <!-- Header -->
+  <div class="page-header stream-header">
+    <div class="header-left">
+      <span class="page-title">AGENT EVENT STREAM</span>
+      <span class="header-count" *ngIf="displayEvents.length">{{ displayEvents.length }} events</span>
+    </div>
+    <div class="header-right">
+      <button mat-icon-button (click)="clearEvents()" matTooltip="Clear" class="control-btn">
+        <mat-icon>clear_all</mat-icon>
+      </button>
+      <button mat-icon-button (click)="toggleStickyScroll()"
+              [matTooltip]="stickyScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF'"
+              class="control-btn" [class.active]="stickyScroll">
+        <mat-icon>{{ stickyScroll ? 'vertical_align_bottom' : 'pause' }}</mat-icon>
+      </button>
+      <div class="live-indicator" [class.connected]="isConnected">
+        <span class="live-dot"></span>
+        <span class="live-text">{{ isConnected ? 'Live' : 'Offline' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <mat-form-field appearance="outline" class="filter-field search-field">
+      <mat-label>Search events</mat-label>
+      <input matInput [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" placeholder="Search...">
+      <mat-icon matSuffix (click)="onSearch()" class="clickable-suffix">search</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field agent-field">
+      <mat-label>Agent</mat-label>
+      <mat-select [(ngModel)]="agentFilter" (selectionChange)="onFilterChange()">
+        <mat-option value="">All Agents</mat-option>
+        <mat-option *ngFor="let agent of agents" [value]="agent.id">{{ agent.name || agent.id }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field type-field">
+      <mat-label>Event Type</mat-label>
+      <mat-select [(ngModel)]="eventTypeFilter" (selectionChange)="onFilterChange()">
+        <mat-option value="">All Types</mat-option>
+        <mat-option *ngFor="let type of eventTypes" [value]="type">{{ type }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Event Stream -->
+  <div class="event-stream" #scrollContainer (scroll)="onScroll()">
+    <div *ngFor="let event of displayEvents; trackBy: trackByEvent"
+         class="event-row"
+         [style.borderLeftColor]="event._agentColor"
+         [class.expanded]="event._isExpanded"
+         (click)="toggleExpand(event)">
+
+      <!-- Main Row -->
+      <div class="event-main">
+        <div class="event-left">
+          <span class="agent-badge" [style.backgroundColor]="event._agentColor">{{ event._agentName || 'agent' }}</span>
+          <span class="agent-id">{{ formatAgentId(event.agent_id) }}</span>
+          <span class="event-type-badge" [style.backgroundColor]="event._eventColor + '22'" [style.color]="event._eventColor">
+            <mat-icon class="badge-icon">{{ event._eventIcon }}</mat-icon>
+            {{ event.event_type }}
+          </span>
+        </div>
+        <span class="event-time">{{ event._formattedTime }}</span>
+      </div>
+
+      <!-- Tool / Summary Row -->
+      <div class="event-detail-line" *ngIf="event._toolName || event._summary">
+        <span class="tool-label" *ngIf="event._toolName">{{ event._toolName }}</span>
+        <span class="tool-detail" *ngIf="event._toolDetail">{{ event._toolDetail }}</span>
+        <span class="event-summary" *ngIf="!event._toolName && event._summary">{{ event._summary }}</span>
+      </div>
+
+      <!-- Expandable Metadata -->
+      <div class="event-metadata" *ngIf="event._isExpanded" (click)="$event.stopPropagation()">
+        <div class="metadata-header">
+          <span>Metadata</span>
+          <button mat-icon-button (click)="copyJson(event, $event)" matTooltip="Copy JSON" class="copy-btn">
+            <mat-icon>content_copy</mat-icon>
+          </button>
+        </div>
+        <pre class="metadata-json">{{ event._metadataJson }}</pre>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" *ngIf="!loading && displayEvents.length === 0">
+      <mat-icon>timeline</mat-icon>
+      <p>No events found</p>
+      <p class="hint" *ngIf="searchTerm || agentFilter || eventTypeFilter">Try adjusting your filters</p>
+      <p class="hint" *ngIf="!searchTerm && !agentFilter && !eventTypeFilter">Events will appear here as agents send hook events</p>
+    </div>
+
+    <div class="loading-state" *ngIf="loading">Loading events...</div>
+  </div>
+</div>

@@ -1,0 +1,278 @@
+.event-stream-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+// Header
+.stream-header {
+  .control-btn {
+    color: rgba(255, 255, 255, 0.3);
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+
+    &.active {
+      color: #7c3aed;
+    }
+  }
+
+  .live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6b7280;
+    }
+
+    .live-text {
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    &.connected {
+      .live-dot {
+        background: #4caf50;
+        box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+      }
+      .live-text {
+        color: #4caf50;
+      }
+    }
+  }
+}
+
+// Filter bar
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+
+  .filter-field {
+    margin-bottom: 0;
+  }
+
+  .search-field {
+    width: 260px;
+  }
+
+  .agent-field {
+    width: 200px;
+  }
+
+  .type-field {
+    width: 200px;
+  }
+
+  .clickable-suffix {
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.4);
+
+    &:hover {
+      color: #7c3aed;
+    }
+  }
+}
+
+// Event stream container
+.event-stream {
+  flex: 1;
+  overflow-y: auto;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+// Event rows
+.event-row {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  &.expanded {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.event-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  .event-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+}
+
+// Agent badge
+.agent-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-id {
+  color: rgba(255, 255, 255, 0.35);
+  font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+}
+
+// Event type badge
+.event-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+// Timestamp
+.event-time {
+  color: rgba(255, 255, 255, 0.35);
+  font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+// Tool / summary detail line
+.event-detail-line {
+  margin-top: 4px;
+  padding-left: 4px;
+  color: rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  .tool-label {
+    font-weight: 600;
+    color: #a78bfa;
+    margin-right: 6px;
+  }
+
+  .tool-detail {
+    color: rgba(255, 255, 255, 0.35);
+    font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+  }
+
+  .event-summary {
+    color: rgba(255, 255, 255, 0.45);
+  }
+}
+
+// Expandable metadata
+.event-metadata {
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 10px;
+
+  .metadata-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .copy-btn {
+    color: rgba(255, 255, 255, 0.3);
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+
+    &:hover {
+      color: #7c3aed;
+    }
+  }
+
+  .metadata-json {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    padding: 12px;
+    font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+    color: rgba(255, 255, 255, 0.7);
+    overflow-x: auto;
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+// Empty state
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: rgba(255, 255, 255, 0.3);
+
+  .hint {
+    color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.loading-state {
+  text-align: center;
+  padding: 24px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+// Dark theme form field overrides
+::ng-deep {
+  .filter-field {
+    .mat-form-field-outline {
+      color: rgba(255, 255, 255, 0.2);
+    }
+    .mat-form-field-label {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    .mat-input-element {
+      color: #fff;
+    }
+    .mat-select-value {
+      color: rgba(255, 255, 255, 0.85);
+    }
+    .mat-select-arrow {
+      color: rgba(255, 255, 255, 0.4);
+    }
+    &.mat-focused .mat-form-field-outline {
+      color: #7c3aed;
+    }
+    &.mat-focused .mat-form-field-label {
+      color: #7c3aed;
+    }
+  }
+}

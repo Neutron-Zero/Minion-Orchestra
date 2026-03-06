@@ -1,0 +1,61 @@
+<div class="agents-page">
+  <div class="page-header">
+    <div class="header-left">
+      <span class="page-title">ACTIVE AGENTS</span>
+      <span class="agent-count" *ngIf="workingCount > 0">{{ workingCount }} Working</span>
+      <span class="agent-count idle" *ngIf="workingCount === 0">{{ agentCount }} Connected</span>
+    </div>
+    <div class="legend" *ngIf="viewType === 'timeline'">
+      <span class="legend-item"><span class="legend-dot" style="background:#4caf50"></span>Working</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#ffc107"></span>Waiting</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#f44336"></span>Failed</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#6e7681"></span>Completed</span>
+    </div>
+    <div class="header-right">
+      <div class="range-group" *ngIf="viewType === 'timeline'">
+        <button *ngFor="let r of timeRanges"
+                class="range-btn"
+                [class.active]="selectedRange === r.minutes"
+                (click)="setTimeRange(r.minutes)">
+          {{ r.label }}
+        </button>
+      </div>
+      <div class="view-toggle">
+        <button class="toggle-btn" [class.active]="viewType === 'kanban'" (click)="setViewType('kanban')">
+          <mat-icon>view_column</mat-icon>
+          Kanban
+        </button>
+        <button class="toggle-btn" [class.active]="viewType === 'timeline'" (click)="setViewType('timeline')">
+          <mat-icon>view_timeline</mat-icon>
+          Timeline
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="view-container" *ngIf="viewType === 'kanban'">
+    <app-kanban-board
+      [agents]="(agents$ | async) || []"
+      (remove)="removeAgent($event)"
+      (focus)="focusAgent($event)"
+      (viewDetails)="viewAgentDetails($event)"
+      (approve)="approveAgent($event)"
+      (deny)="denyAgent($event)"
+      (sendInput)="sendAgentInput($event)">
+    </app-kanban-board>
+  </div>
+
+  <div class="view-container" *ngIf="viewType === 'timeline'">
+    <app-agent-timeline #timelineRef
+      [agents]="(agents$ | async) || []"
+      [initialRange]="selectedRange"
+      (focus)="focusAgent($event)"
+      (viewDetails)="viewAgentDetails($event)">
+    </app-agent-timeline>
+  </div>
+
+  <div *ngIf="(agents$ | async)?.length === 0 && viewType === 'kanban'" class="empty-state">
+    <mat-icon>sentiment_dissatisfied</mat-icon>
+    <p>No active agents. Start a Claude Code session to see agents here.</p>
+  </div>
+</div>

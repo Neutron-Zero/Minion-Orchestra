@@ -1,0 +1,213 @@
+<div class="agent-detail-page">
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-icon class="spinner">hourglass_empty</mat-icon>
+    <span>Loading agent details...</span>
+  </div>
+
+  <div class="error-state" *ngIf="!loading && error">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ error }}</span>
+    <button mat-button class="retry-btn" (click)="loadAgent()">Retry</button>
+  </div>
+
+  <div class="detail-layout" *ngIf="!loading && !error && agent">
+
+    <!-- Left: Agent Metadata Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span class="status-dot" [style.backgroundColor]="getStatusColor(agent.status)"></span>
+        <span class="agent-name">{{ getFormattedAgentId(agent.id) }}</span>
+      </div>
+
+      <span class="status-badge" [style.backgroundColor]="getStatusColor(agent.status) + '22'"
+            [style.color]="getStatusColor(agent.status)">
+        {{ agent.status }}
+      </span>
+
+      <div class="sidebar-section" *ngIf="agent.currentTask">
+        <span class="section-label">Current Task</span>
+        <span class="section-value">{{ agent.currentTask }}</span>
+
+        <!-- Approval actions flow directly under the task description -->
+        <div class="sidebar-approval" *ngIf="agent.status === 'awaiting-permission' || agent.status === 'permission-requested'">
+          <div class="sidebar-approval-actions">
+            <button class="approve-btn compact" (click)="approveAgent()">Approve</button>
+            <button class="deny-btn compact" (click)="denyAgent()">Deny</button>
+          </div>
+          <div class="sidebar-approval-input">
+            <textarea class="freeform-input compact" [(ngModel)]="hitlInput" placeholder="Custom response..."
+                      (keydown.enter)="$event.preventDefault(); sendHitlInput()" rows="2"></textarea>
+            <button class="send-btn compact" (click)="sendHitlInput()" [disabled]="!hitlInput.trim()">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section" *ngIf="agent.currentTool && agent.status !== 'awaiting-permission' && agent.status !== 'permission-requested'">
+        <span class="section-label">Active Tool</span>
+        <span class="tool-pill">{{ agent.currentTool }}</span>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="meta-list">
+        <div class="meta-row" *ngIf="getFolderName(agent.workingDirectory)">
+          <mat-icon class="meta-icon">folder</mat-icon>
+          <span class="meta-value">{{ getFolderName(agent.workingDirectory) }}</span>
+        </div>
+        <div class="meta-row" *ngIf="agent.sessionData?.gitBranch">
+          <mat-icon class="meta-icon">call_split</mat-icon>
+          <span class="meta-value">{{ agent.sessionData.gitBranch }}</span>
+        </div>
+        <div class="meta-row" *ngIf="agent.sessionData?.model">
+          <mat-icon class="meta-icon">smart_toy</mat-icon>
+          <span class="meta-value">{{ agent.sessionData.model }}</span>
+        </div>
+        <div class="meta-row" *ngIf="agent.startTime">
+          <mat-icon class="meta-icon">schedule</mat-icon>
+          <span class="meta-value">{{ formatStartTime(agent.startTime) }}</span>
+        </div>
+        <div class="meta-row" *ngIf="duration">
+          <mat-icon class="meta-icon">timer</mat-icon>
+          <span class="meta-value">{{ duration }}</span>
+        </div>
+        <div class="meta-row" *ngIf="agent.pid">
+          <mat-icon class="meta-icon">memory</mat-icon>
+          <span class="meta-value">PID {{ agent.pid }}</span>
+        </div>
+      </div>
+
+      <ng-container *ngIf="subagents.length > 0">
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section">
+          <span class="section-label">Subagents</span>
+          <div class="subagent-list">
+            <div class="subagent-item" *ngFor="let sub of subagents" (click)="navigateToSubagent(sub.id)">
+              <span class="status-dot" [style.backgroundColor]="getStatusColor(sub.status)"></span>
+              <span class="subagent-name">{{ getFormattedAgentId(sub.id) }}</span>
+              <span class="subagent-status">{{ sub.status }}</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+
+    <!-- Right: Log/Transcript -->
+    <div class="right-column">
+
+      <!-- Log / Transcript Panel -->
+      <div class="main-panel">
+
+      <!-- Tab Navigation -->
+      <div class="tab-bar">
+        <button class="tab-btn" [class.active]="activeTab === 'log'" (click)="setTab('log')">
+          <mat-icon>list_alt</mat-icon> Activity Log
+          <span class="tab-count">{{ logs.length }}</span>
+        </button>
+        <button class="tab-btn" [class.active]="activeTab === 'transcript'" (click)="setTab('transcript')">
+          <mat-icon>chat</mat-icon> Transcript
+          <span class="tab-count" *ngIf="transcriptEntries.length">{{ transcriptEntries.length }}</span>
+        </button>
+        <input *ngIf="activeTab === 'transcript'" class="transcript-search"
+               [(ngModel)]="transcriptSearchTerm"
+               (input)="applyTranscriptFilter()" placeholder="Search transcript...">
+      </div>
+
+      <!-- Activity Log Tab -->
+      <div class="panel-content" *ngIf="activeTab === 'log'">
+        <div class="log-list" *ngIf="logs.length > 0">
+          <div class="log-entry" *ngFor="let log of logs; trackBy: trackByLog; let odd = odd" [class.odd]="odd">
+            <span class="log-timestamp">{{ formatTimestamp(log.timestamp) }}</span>
+            <mat-icon class="level-icon"
+                      [style.color]="getLevelIconColor(log.level)">
+              {{ getLevelIcon(log.level) }}
+            </mat-icon>
+            <span class="log-message">
+              <ng-container *ngFor="let part of log._parsed; trackBy: trackByPart">
+                <span *ngIf="part.isTool" class="tool-highlight">{{ part.text }}</span>
+                <ng-container *ngIf="!part.isTool">{{ part.text }}</ng-container>
+              </ng-container>
+            </span>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="logs.length === 0">
+          <mat-icon>description</mat-icon>
+          <span>No activity logs yet.</span>
+        </div>
+      </div>
+
+      <!-- Transcript Tab -->
+      <div class="panel-content transcript-panel" *ngIf="activeTab === 'transcript'">
+        <div class="transcript-chat" #transcriptScroll>
+          <ng-container *ngFor="let entry of filteredTranscript; trackBy: trackByTranscript">
+
+            <!-- User Message -->
+            <div class="chat-bubble user-bubble" *ngIf="entry.entry_type === 'user'">
+              <div class="bubble-header">
+                <span class="bubble-role">User</span>
+                <span class="bubble-time">{{ formatTimestamp(entry.timestamp) }}</span>
+              </div>
+              <div class="bubble-content">{{ entry.content }}</div>
+            </div>
+
+            <!-- Assistant Message -->
+            <div class="chat-bubble assistant-bubble" *ngIf="entry.entry_type === 'assistant' && !isThinking(entry)">
+              <div class="bubble-header">
+                <span class="bubble-role">Assistant</span>
+                <span class="bubble-time">{{ formatTimestamp(entry.timestamp) }}</span>
+              </div>
+              <div class="bubble-content">{{ entry.content }}</div>
+            </div>
+
+            <!-- Thinking -->
+            <div class="chat-bubble thinking-bubble" *ngIf="entry.entry_type === 'assistant' && isThinking(entry)">
+              <div class="bubble-header clickable" (click)="entry._expanded = !entry._expanded">
+                <mat-icon class="thinking-icon">psychology</mat-icon>
+                <span class="bubble-role dim">Thinking...</span>
+                <mat-icon class="expand-icon">{{ entry._expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+              </div>
+              <div class="bubble-content thinking-text" *ngIf="entry._expanded">{{ entry.content }}</div>
+            </div>
+
+            <!-- Tool Use -->
+            <div class="tool-call-block" *ngIf="entry.entry_type === 'tool_use'">
+              <div class="tool-header clickable" (click)="entry._expanded = !entry._expanded">
+                <mat-icon class="tool-icon">build</mat-icon>
+                <span class="tool-name">{{ entry.tool_name }}</span>
+                <span class="tool-summary">{{ getToolSummary(entry) }}</span>
+                <span class="bubble-time">{{ formatTimestamp(entry.timestamp) }}</span>
+                <mat-icon class="expand-icon">{{ entry._expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+              </div>
+              <div class="tool-detail" *ngIf="entry._expanded">
+                <pre class="tool-json">{{ entry.tool_input }}</pre>
+              </div>
+            </div>
+
+            <!-- Tool Result -->
+            <div class="tool-result-block" *ngIf="entry.entry_type === 'tool_result'">
+              <div class="tool-result-header clickable" (click)="entry._expanded = !entry._expanded">
+                <mat-icon class="result-icon">output</mat-icon>
+                <span class="result-label">Result</span>
+                <span class="result-preview" *ngIf="!entry._expanded">{{ truncate(entry.content, 80) }}</span>
+                <mat-icon class="expand-icon">{{ entry._expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+              </div>
+              <div class="tool-result-content" *ngIf="entry._expanded">
+                <pre class="result-text">{{ entry.content }}</pre>
+              </div>
+            </div>
+
+          </ng-container>
+
+          <div class="empty-state" *ngIf="filteredTranscript.length === 0">
+            <mat-icon>chat_bubble_outline</mat-icon>
+            <span *ngIf="!transcriptSearchTerm">No transcript data available. Transcript appears as the agent works.</span>
+            <span *ngIf="transcriptSearchTerm">No matches found.</span>
+          </div>
+        </div>
+      </div>
+
+      </div>
+    </div>
+  </div>
+</div>

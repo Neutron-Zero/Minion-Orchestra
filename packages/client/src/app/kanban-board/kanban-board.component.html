@@ -1,0 +1,53 @@
+<ng-template #agentCard let-agent let-isChild="isChild">
+  <div class="kanban-card" [class.subagent-card]="isChild"
+       [class.completed-card]="agent.status === 'completed' || agent.status === 'offline' || agent.status === 'paused'"
+       [class.awaiting-card]="agent.status === 'awaiting-permission' || agent.status === 'permission-requested'"
+       [style.--agent-color]="getAgentColor(agent.id)"
+       (click)="viewDetails.emit(agent)">
+    <div class="card-line-1">
+      <span class="agent-id">{{ agent.type === 'subagent' ? getFormattedSubagentId(agent.id) : getFormattedAgentId(agent.id) }}</span>
+      <button class="terminal-btn" *ngIf="agent.type !== 'subagent'" (click)="$event.stopPropagation(); focus.emit(agent)" matTooltip="Go to Terminal">
+        <mat-icon>terminal</mat-icon>
+      </button>
+    </div>
+    <div class="card-task" *ngIf="agent.type === 'subagent' ? agent.name : agent.currentTask">{{ agent.type === 'subagent' ? agent.name : agent.currentTask }}</div>
+    <div class="card-line-2">
+      <span class="agent-folder" *ngIf="getFolderName(agent)">{{ getFolderName(agent) }}</span>
+      <span class="elapsed">{{ getActiveTime(agent) }}</span>
+    </div>
+    <!-- HITL inline controls -->
+    <div class="card-hitl" *ngIf="agent.status === 'awaiting-permission' || agent.status === 'permission-requested'"
+         (click)="$event.stopPropagation()">
+      <div class="card-hitl-buttons">
+        <button class="card-approve-btn" (click)="onApprove(agent)">Approve</button>
+        <button class="card-deny-btn" (click)="onDeny(agent)">Deny</button>
+      </div>
+      <div class="card-hitl-input">
+        <input class="card-freeform" placeholder="Custom response..."
+               [attr.data-agent-id]="agent.id"
+               (keydown.enter)="onSendInput(agent, $event)">
+        <button class="card-send-btn" (click)="onSendInput(agent, $event)">Send</button>
+      </div>
+    </div>
+  </div>
+</ng-template>
+
+<div class="kanban-board">
+  <div class="kanban-column" *ngFor="let col of columns; trackBy: trackByColumn">
+    <div class="column-header" [style.borderTopColor]="col.color">
+      <span class="column-label">{{ col.label }}</span>
+      <span class="column-count" [style.backgroundColor]="col.color">{{ getAgentCount(col) }}</span>
+    </div>
+    <div class="column-body">
+      <ng-container *ngFor="let node of col.agentNodes; trackBy: trackByNode">
+        <ng-container *ngTemplateOutlet="agentCard; context: { $implicit: node.agent, isChild: false }"></ng-container>
+        <ng-container *ngFor="let child of node.children; trackBy: trackByAgent">
+          <ng-container *ngTemplateOutlet="agentCard; context: { $implicit: child, isChild: true }"></ng-container>
+        </ng-container>
+      </ng-container>
+      <div class="empty-column" *ngIf="col.agentNodes.length === 0">
+        No agents
+      </div>
+    </div>
+  </div>
+</div>
