@@ -32,8 +32,8 @@
         <!-- Approval actions flow directly under the task description -->
         <div class="sidebar-approval" *ngIf="agent.status === 'awaiting-permission' || agent.status === 'permission-requested'">
           <div class="sidebar-approval-actions">
-            <button class="approve-btn compact" (click)="approveAgent()">Approve</button>
-            <button class="deny-btn compact" (click)="denyAgent()">Deny</button>
+            <button class="approve-btn compact" (click)="approveAgent()">Yes</button>
+            <button class="deny-btn compact" (click)="denyAgent()">No</button>
           </div>
           <div class="sidebar-approval-input">
             <textarea class="freeform-input compact" [(ngModel)]="hitlInput" placeholder="Custom response..."

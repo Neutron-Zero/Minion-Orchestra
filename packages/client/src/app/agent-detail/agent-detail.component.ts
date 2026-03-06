@@ -358,12 +358,13 @@ export class AgentDetailComponent implements OnInit, OnDestroy {
   }
 
   approveAgent(): void {
-    this.agentService.sendAgentInput(this.agentId, 'y');
+    this.agentService.sendAgentAction(this.agentId, 'approve');
   }
 
   denyAgent(): void {
-    this.agentService.sendAgentInput(this.agentId, 'n');
+    this.agentService.sendAgentAction(this.agentId, 'deny');
   }
+
 
   sendHitlInput(): void {
     const text = this.hitlInput.trim();

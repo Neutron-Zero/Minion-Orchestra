@@ -166,6 +166,7 @@ export class KanbanBoardComponent {
     this.deny.emit(agent);
   }
 
+
   onSendInput(agent: Agent, event: Event): void {
     const card = (event.target as HTMLElement).closest('.kanban-card');
     if (!card) return;

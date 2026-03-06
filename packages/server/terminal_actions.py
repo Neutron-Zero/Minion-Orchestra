@@ -163,20 +163,32 @@ async def _send_input_terminal_app(pid: int, text: str) -> dict:
 
     safe_tty = _escape_applescript(tty)
     safe_text = _escape_applescript(text)
-    script = (
-        'tell application "Terminal"\n'
-        "    repeat with w in every window\n"
-        "        repeat with t in every tab of w\n"
-        f'            if tty of t contains "{safe_tty}" then\n'
-        f'                do script "{safe_text}" in t\n'
-        "                return\n"
-        "            end if\n"
-        "        end repeat\n"
-        "    end repeat\n"
-        "end tell"
-    )
+    # First focus the right tab (reuse the working focus logic)
+    focus_result = await _focus_terminal_app(pid)
+    if not focus_result.get("success"):
+        return focus_result
 
-    _stdout, stderr, rc = await _run_applescript(script)
+    # Then type via System Events -- do script queues a shell command
+    # instead of typing into a running foreground process.
+    await asyncio.sleep(0.3)
+    if text == "\x1b":
+        # Escape key
+        keystroke_script = (
+            'tell application "System Events"\n'
+            '    tell process "Terminal"\n'
+            "        key code 53\n"
+            "    end tell\n"
+            "end tell"
+        )
+    else:
+        keystroke_script = (
+            'tell application "System Events"\n'
+            '    tell process "Terminal"\n'
+            f'        keystroke "{safe_text}"\n'
+            "    end tell\n"
+            "end tell"
+        )
+    _stdout, stderr, rc = await _run_applescript(keystroke_script)
     if rc != 0:
         return {"success": False, "terminal": "terminal.app", "error": stderr or f"osascript exited with code {rc}"}
     return {"success": True, "terminal": "terminal.app", "error": None}
@@ -220,24 +232,32 @@ async def _send_input_iterm2(pid: int, text: str) -> dict:
     if tty is None:
         return {"success": False, "terminal": "iterm2", "error": f"Could not determine TTY for PID {pid}"}
 
-    safe_tty = _escape_applescript(tty)
     safe_text = _escape_applescript(text)
-    script = (
-        'tell application "iTerm2"\n'
-        "    repeat with w in every window\n"
-        "        repeat with t in every tab of w\n"
-        "            repeat with s in every session of t\n"
-        f'                if tty of s contains "{safe_tty}" then\n'
-        f'                    tell s to write text "{safe_text}"\n'
-        "                    return\n"
-        "                end if\n"
-        "            end repeat\n"
-        "        end repeat\n"
-        "    end repeat\n"
-        "end tell"
-    )
 
-    _stdout, stderr, rc = await _run_applescript(script)
+    # Focus the right session first, then keystroke via System Events.
+    # write text appends a newline which breaks interactive menus.
+    focus_result = await _focus_iterm2(pid)
+    if not focus_result.get("success"):
+        return focus_result
+
+    await asyncio.sleep(0.3)
+    if text == "\x1b":
+        keystroke_script = (
+            'tell application "System Events"\n'
+            '    tell process "iTerm2"\n'
+            "        key code 53\n"
+            "    end tell\n"
+            "end tell"
+        )
+    else:
+        keystroke_script = (
+            'tell application "System Events"\n'
+            '    tell process "iTerm2"\n'
+            f'        keystroke "{safe_text}"\n'
+            "    end tell\n"
+            "end tell"
+        )
+    _stdout, stderr, rc = await _run_applescript(keystroke_script)
     if rc != 0:
         return {"success": False, "terminal": "iterm2", "error": stderr or f"osascript exited with code {rc}"}
     return {"success": True, "terminal": "iterm2", "error": None}
@@ -337,8 +357,9 @@ async def _send_input_tmux(pid: int, text: str) -> dict:
     pane = pane_info["pane"]
 
     target = f"{session}:{window}.{pane}"
+    send_text = "Escape" if text == "\x1b" else text
     _stdout, stderr, rc = await _run_command(
-        "tmux", "send-keys", "-t", target, text, "Enter",
+        "tmux", "send-keys", "-t", target, send_text,
     )
     if rc != 0:
         return {"success": False, "terminal": "tmux", "error": stderr or f"tmux send-keys failed (exit {rc})"}

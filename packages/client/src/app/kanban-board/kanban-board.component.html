@@ -19,11 +19,11 @@
     <div class="card-hitl" *ngIf="agent.status === 'awaiting-permission' || agent.status === 'permission-requested'"
          (click)="$event.stopPropagation()">
       <div class="card-hitl-buttons">
-        <button class="card-approve-btn" (click)="onApprove(agent)">Approve</button>
-        <button class="card-deny-btn" (click)="onDeny(agent)">Deny</button>
+        <button class="card-approve-btn" (click)="onApprove(agent)">Yes</button>
+        <button class="card-deny-btn" (click)="onDeny(agent)">No</button>
       </div>
       <div class="card-hitl-input">
-        <input class="card-freeform" placeholder="Custom response..."
+        <input class="card-freeform" placeholder="Option # or response..."
                [attr.data-agent-id]="agent.id"
                (keydown.enter)="onSendInput(agent, $event)">
         <button class="card-send-btn" (click)="onSendInput(agent, $event)">Send</button>

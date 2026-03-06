@@ -98,14 +98,15 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
   }
 
   approveAgent(agent: Agent): void {
-    this.agentService.sendAgentInput(agent.id, 'y');
+    this.agentService.sendAgentAction(agent.id, 'approve');
   }
 
   denyAgent(agent: Agent): void {
-    this.agentService.sendAgentInput(agent.id, 'n');
+    this.agentService.sendAgentAction(agent.id, 'deny');
   }
 
   sendAgentInput(event: { agent: Agent; text: string }): void {
     this.agentService.sendAgentInput(event.agent.id, event.text);
   }
+
 }

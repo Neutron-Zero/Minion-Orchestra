@@ -615,8 +615,32 @@ export class AgentMonitorService implements OnDestroy {
   }
 
   sendAgentInput(agentId: string, text: string): void {
-    this.http.post(`${environment.serverUrl}/api/actions/input`, { agentId, text }).subscribe({
-      error: (err) => console.error('Error sending input:', err)
+    this.http.post<any>(`${environment.serverUrl}/api/actions/input`, { agentId, text }).subscribe({
+      next: (res) => {
+        if (res && !res.success) {
+          console.error('HITL send_input failed:', res.error);
+          this.addNotification('error', `Input failed: ${res.error}`);
+        }
+      },
+      error: (err) => {
+        console.error('Error sending input:', err);
+        this.addNotification('error', 'Failed to send input to agent');
+      }
+    });
+  }
+
+  sendAgentAction(agentId: string, action: 'approve' | 'deny'): void {
+    this.http.post<any>(`${environment.serverUrl}/api/actions/input`, { agentId, action }).subscribe({
+      next: (res) => {
+        if (res && !res.success) {
+          console.error('HITL action failed:', res.error);
+          this.addNotification('error', `Action failed: ${res.error}`);
+        }
+      },
+      error: (err) => {
+        console.error('Error sending action:', err);
+        this.addNotification('error', 'Failed to send action to agent');
+      }
     });
   }
 

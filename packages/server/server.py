@@ -33,7 +33,7 @@ cleanup_service = CleanupService(agent_manager, task_queue, sio)
 session_watcher = SessionWatcher(agent_manager, sio)
 transcript_scanner = TranscriptScanner(sio)
 
-VERSION = "1.6.2"
+VERSION = "1.6.3"
 
 @asynccontextmanager
 async def lifespan(app):

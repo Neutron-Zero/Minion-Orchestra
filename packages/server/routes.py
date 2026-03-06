@@ -704,10 +704,17 @@ async def action_input(request: Request):
     try:
         body: dict[str, Any] = await request.json()
         agent_id = body.get("agentId")
+        action = body.get("action")  # "approve" or "deny"
         text = body.get("text", "")
         agent, _ = agent_manager.find_agent_by_id(agent_id)
         if not agent or not agent.pid:
-            return {"success": False, "error": "Agent not found or no PID"}
+            error = f"Agent not found (id={agent_id})" if not agent else f"Agent has no PID (id={agent_id})"
+            return {"success": False, "error": error}
+        # Translate actions into terminal input
+        if action == "approve":
+            text = "1"
+        elif action == "deny":
+            text = "\x1b"  # Escape key cancels the permission menu
         result = await send_input(agent.pid, text)
         return result
     except Exception as e:
