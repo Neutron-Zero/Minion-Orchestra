@@ -180,7 +180,7 @@
                 <mat-icon class="expand-icon">{{ entry._expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
               </div>
               <div class="tool-detail" *ngIf="entry._expanded">
-                <pre class="tool-json">{{ entry.tool_input }}</pre>
+                <pre class="tool-json">{{ formatJson(entry.tool_input) }}</pre>
               </div>
             </div>
 
@@ -193,7 +193,7 @@
                 <mat-icon class="expand-icon">{{ entry._expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
               </div>
               <div class="tool-result-content" *ngIf="entry._expanded">
-                <pre class="result-text">{{ entry.content }}</pre>
+                <pre class="result-text">{{ formatJson(entry.content) }}</pre>
               </div>
             </div>
 

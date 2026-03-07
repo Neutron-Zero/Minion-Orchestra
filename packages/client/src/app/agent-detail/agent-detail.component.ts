@@ -249,6 +249,15 @@ export class AgentDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  formatJson(raw: string | null): string {
+    if (!raw) return '';
+    try {
+      return JSON.stringify(JSON.parse(raw), null, 2);
+    } catch {
+      return raw;
+    }
+  }
+
   truncate(text: string | null, max: number): string {
     if (!text) return '';
     return text.length > max ? text.substring(0, max) + '...' : text;
