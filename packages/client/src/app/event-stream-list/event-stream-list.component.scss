@@ -1,0 +1,172 @@
+// Event stream container
+.event-stream {
+  flex: 1;
+  overflow-y: auto;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+// Event rows
+.event-row {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  &.expanded {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.event-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  .event-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+}
+
+// Agent badge
+.agent-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-id {
+  color: rgba(255, 255, 255, 0.35);
+  font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+}
+
+// Event type badge
+.event-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.badge-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+// Timestamp
+.event-time {
+  color: rgba(255, 255, 255, 0.35);
+  font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+// Tool / summary detail line
+.event-detail-line {
+  margin-top: 4px;
+  padding-left: 4px;
+  color: rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  .tool-label {
+    font-weight: 600;
+    color: #a78bfa;
+    margin-right: 6px;
+  }
+
+  .tool-detail {
+    color: rgba(255, 255, 255, 0.35);
+    font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+  }
+
+  .event-summary {
+    color: rgba(255, 255, 255, 0.45);
+  }
+}
+
+// Expandable metadata
+.event-metadata {
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 10px;
+
+  .metadata-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .copy-btn {
+    color: rgba(255, 255, 255, 0.3);
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+
+    &:hover {
+      color: #7c3aed;
+    }
+  }
+
+  .metadata-json {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    padding: 12px;
+    font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+    color: rgba(255, 255, 255, 0.7);
+    overflow-x: auto;
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+// Empty state
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: rgba(255, 255, 255, 0.3);
+
+  .hint {
+    color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.loading-state {
+  text-align: center;
+  padding: 24px;
+  color: rgba(255, 255, 255, 0.4);
+}

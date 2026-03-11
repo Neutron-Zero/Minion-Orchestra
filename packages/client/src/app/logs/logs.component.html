@@ -1,0 +1,43 @@
+<div class="event-stream-page">
+  <!-- Header -->
+  <div class="page-header stream-header">
+    <div class="header-left">
+      <span class="page-title">AGENT EVENT STREAM</span>
+      <span class="header-subtitle">Real-time hook events across all agents</span>
+      <span class="header-count" *ngIf="displayEvents.length">{{ displayEvents.length }} events</span>
+    </div>
+    <div class="header-right">
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <div class="compact-field search-field">
+      <mat-icon class="field-icon">search</mat-icon>
+      <input [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" placeholder="Search events...">
+    </div>
+
+    <select class="compact-select" [(ngModel)]="agentFilter" (change)="onFilterChange()">
+      <option value="">All Agents</option>
+      <option *ngFor="let agent of agents" [value]="agent.id">{{ agent.name || agent.id }}</option>
+    </select>
+
+    <select class="compact-select" [(ngModel)]="eventTypeFilter" (change)="onFilterChange()">
+      <option value="">All Types</option>
+      <option *ngFor="let type of eventTypes" [value]="type">{{ type }}</option>
+    </select>
+  </div>
+
+  <!-- Event Stream -->
+  <app-event-stream-list
+    [events]="displayEvents"
+    [loading]="loading"
+    emptyMessage="Events will appear here as agents send hook events"
+    (expand)="toggleExpand($event)"
+    (copyJson)="copyJson($event.event, $event.mouseEvent)">
+  </app-event-stream-list>
+  <div class="new-events-badge" *ngIf="newEventsCount > 0" (click)="jumpToLatest()">
+    <mat-icon>arrow_downward</mat-icon>
+    {{ newEventsCount }} new {{ newEventsCount === 1 ? 'event' : 'events' }}
+  </div>
+</div>

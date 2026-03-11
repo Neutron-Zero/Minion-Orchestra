@@ -1,0 +1,267 @@
+<div class="agent-detail-page">
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-icon class="spinner">hourglass_empty</mat-icon>
+    <span>Loading agent details...</span>
+  </div>
+
+  <div class="error-state" *ngIf="!loading && error">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ error }}</span>
+    <button mat-button class="retry-btn" (click)="loadAgent()">Retry</button>
+  </div>
+
+  <div class="not-found-state" *ngIf="!loading && !error && !agent">
+    <div class="not-found-message">
+      <mat-icon>search_off</mat-icon>
+      <span>Agent not found. It may have been removed or the session has expired.</span>
+    </div>
+    <button mat-button class="back-btn" routerLink="/agents">Back to Agents</button>
+  </div>
+
+  <div class="detail-layout" *ngIf="!loading && !error && agent">
+
+    <!-- Page Header -->
+    <div class="page-header detail-header">
+      <div class="header-left">
+        <span class="page-title">AGENT DETAILS</span>
+      </div>
+      <div class="header-right">
+        <input *ngIf="detailView === 'transcript'" class="transcript-search"
+               [(ngModel)]="transcriptSearchTerm"
+               (input)="applyTranscriptFilter()" placeholder="Search transcript...">
+        <input *ngIf="detailView === 'events'" class="transcript-search"
+               [(ngModel)]="eventSearchTerm"
+               (input)="onEventSearchChange()" placeholder="Search events...">
+        <div class="view-toggle">
+          <button class="toggle-btn" [class.active]="detailView === 'transcript'" (click)="setDetailView('transcript')">
+            <mat-icon>chat</mat-icon>
+            Transcript
+          </button>
+          <button class="toggle-btn" [class.active]="detailView === 'events'" (click)="setDetailView('events')">
+            <mat-icon>timeline</mat-icon>
+            Event Stream
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Columns -->
+    <div class="detail-columns">
+
+    <!-- Left: Agent Metadata Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span class="status-dot" [style.backgroundColor]="getStatusColor(agent.status)"></span>
+        <span class="agent-name">{{ getFormattedAgentId(agent.id) }}</span>
+      </div>
+
+      <span class="status-badge" [style.backgroundColor]="getStatusColor(agent.status) + '22'"
+            [style.color]="getStatusColor(agent.status)">
+        {{ agent.status }}
+      </span>
+
+      <div class="sidebar-section" *ngIf="agent.currentTask">
+        <span class="section-label">Current Task</span>
+        <span class="section-value">{{ agent.currentTask }}</span>
+
+        <!-- Approval actions flow directly under the task description -->
+        <div class="sidebar-approval" *ngIf="agent.status === 'awaiting-permission' || agent.status === 'permission-requested'">
+          <div class="sidebar-approval-actions">
+            <button class="approve-btn compact" (click)="approveAgent()">Yes</button>
+            <button class="deny-btn compact" (click)="denyAgent()">No</button>
+          </div>
+          <div class="sidebar-approval-input">
+            <textarea class="freeform-input compact" [(ngModel)]="hitlInput" placeholder="Custom response..."
+                      (keydown.enter)="$event.preventDefault(); sendHitlInput()" rows="2"></textarea>
+            <button class="send-btn compact" (click)="sendHitlInput()" [disabled]="!hitlInput.trim()">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section" *ngIf="agent.currentTool && agent.status !== 'awaiting-permission' && agent.status !== 'permission-requested'">
+        <span class="section-label">Active Tool</span>
+        <span class="tool-pill">{{ agent.currentTool }}</span>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="meta-list">
+        <div class="meta-row" *ngIf="getFolderName(agent.workingDirectory)">
+          <mat-icon class="meta-icon">folder</mat-icon>
+          <span class="meta-value">{{ getFolderName(agent.workingDirectory) }}</span>
+        </div>
+        <div class="meta-row" *ngIf="agent.sessionData?.gitBranch">
+          <mat-icon class="meta-icon">call_split</mat-icon>
+          <span class="meta-value">{{ agent.sessionData.gitBranch }}</span>
+        </div>
+        <div class="meta-row" *ngIf="agent.sessionData?.model">
+          <mat-icon class="meta-icon">smart_toy</mat-icon>
+          <span class="meta-value">{{ agent.sessionData.model }}</span>
+        </div>
+        <div class="meta-row" *ngIf="agent.startTime">
+          <mat-icon class="meta-icon">schedule</mat-icon>
+          <span class="meta-value">{{ formatStartTime(agent.startTime) }}</span>
+        </div>
+        <div class="meta-row" *ngIf="duration">
+          <mat-icon class="meta-icon">timer</mat-icon>
+          <span class="meta-value">{{ duration }}</span>
+        </div>
+        <div class="meta-row" *ngIf="agent.pid">
+          <mat-icon class="meta-icon">memory</mat-icon>
+          <span class="meta-value">PID {{ agent.pid }}</span>
+        </div>
+      </div>
+
+      <ng-container *ngIf="subagents.length > 0">
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section" *ngIf="activeSubagents.length > 0">
+          <span class="section-label">Active Subagents</span>
+          <div class="subagent-list">
+            <div class="subagent-item" *ngFor="let sub of activeSubagents" (click)="navigateToSubagent(sub.id)">
+              <span class="status-dot" [style.backgroundColor]="getStatusColor(sub.status)"></span>
+              <span class="subagent-name">{{ getFormattedAgentId(sub.id) }}</span>
+              <span class="subagent-status">{{ sub.status }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-section" *ngIf="inactiveSubagents.length > 0">
+          <div class="section-label clickable" (click)="inactiveSubagentsExpanded = !inactiveSubagentsExpanded">
+            <span>Inactive Subagents ({{ inactiveSubagents.length }})</span>
+            <mat-icon class="expand-icon">{{ inactiveSubagentsExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </div>
+          <div class="subagent-list" *ngIf="inactiveSubagentsExpanded">
+            <div class="subagent-item" *ngFor="let sub of inactiveSubagents" (click)="navigateToSubagent(sub.id)">
+              <span class="status-dot" [style.backgroundColor]="getStatusColor(sub.status)"></span>
+              <span class="subagent-name">{{ getFormattedAgentId(sub.id) }}</span>
+              <span class="subagent-status">{{ sub.status }}</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+
+    <!-- Right: View -->
+    <div class="right-column">
+
+      <!-- Main Panel -->
+      <div class="main-panel">
+
+      <!-- Transcript View -->
+      <div class="panel-content transcript-panel" *ngIf="detailView === 'transcript'">
+        <div class="transcript-chat" #transcriptScroll (scroll)="onTranscriptScroll()">
+          <ng-container *ngFor="let entry of filteredTranscript; trackBy: trackByTranscript">
+
+            <!-- User Message (with image) -->
+            <div class="chat-bubble user-bubble" *ngIf="entry.entry_type === 'user' && hasImage(entry)"
+                 [attr.data-timestamp]="entry.timestamp">
+              <div class="bubble-header clickable" (click)="entry._expanded = !entry._expanded">
+                <span class="bubble-role">User</span>
+                <span class="spacer"></span>
+                <span class="bubble-time">{{ formatTimestamp(entry.timestamp) }}</span>
+                <mat-icon class="expand-icon">{{ entry._expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+              </div>
+              <img [src]="getImageUrl(entry)" class="transcript-image" loading="lazy">
+              <pre class="image-path" *ngIf="entry._expanded">{{ entry.content }}</pre>
+            </div>
+
+            <!-- User Message (text only) -->
+            <div class="chat-bubble user-bubble" *ngIf="entry.entry_type === 'user' && !hasImage(entry)"
+                 [attr.data-timestamp]="entry.timestamp">
+              <div class="bubble-header">
+                <span class="bubble-role">User</span>
+                <span class="bubble-time">{{ formatTimestamp(entry.timestamp) }}</span>
+              </div>
+              <div class="bubble-content">{{ entry.content }}</div>
+            </div>
+
+            <!-- Assistant Message -->
+            <div class="chat-bubble assistant-bubble" *ngIf="entry.entry_type === 'assistant' && !isThinking(entry)">
+              <div class="bubble-header">
+                <span class="bubble-role">Assistant</span>
+                <span class="bubble-time">{{ formatTimestamp(entry.timestamp) }}</span>
+              </div>
+              <div class="bubble-content">{{ entry.content }}</div>
+            </div>
+
+            <!-- Thinking -->
+            <div class="chat-bubble thinking-bubble" *ngIf="entry.entry_type === 'assistant' && isThinking(entry)">
+              <div class="bubble-header clickable" (click)="entry._expanded = !entry._expanded">
+                <mat-icon class="thinking-icon">psychology</mat-icon>
+                <span class="bubble-role dim">Thinking...</span>
+                <mat-icon class="expand-icon">{{ entry._expanded !== false ? 'expand_less' : 'expand_more' }}</mat-icon>
+              </div>
+              <div class="bubble-content thinking-text" *ngIf="entry._expanded !== false">{{ entry.content }}</div>
+            </div>
+
+            <!-- Tool Use -->
+            <div class="tool-call-block" *ngIf="entry.entry_type === 'tool_use'">
+              <div class="tool-header clickable" (click)="entry._expanded = !entry._expanded">
+                <mat-icon class="tool-icon">build</mat-icon>
+                <span class="tool-name">{{ entry.tool_name }}</span>
+                <span class="tool-summary">{{ getToolSummary(entry) }}</span>
+                <span class="bubble-time">{{ formatTimestamp(entry.timestamp) }}</span>
+                <mat-icon class="expand-icon">{{ entry._expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+              </div>
+              <div class="tool-detail" *ngIf="entry._expanded">
+                <pre class="tool-json">{{ formatJson(entry.tool_input) }}</pre>
+              </div>
+            </div>
+
+            <!-- Tool Result -->
+            <div class="tool-result-block" [class.tool-result-error]="isToolError(entry)" [class.tool-result-denied]="isToolDenied(entry)" [class.tool-result-empty]="isToolEmpty(entry)" *ngIf="entry.entry_type === 'tool_result'">
+              <div class="tool-result-header clickable" (click)="entry._expanded = !entry._expanded">
+                <mat-icon class="result-icon">output</mat-icon>
+                <span class="result-preview empty-placeholder" *ngIf="!entry._expanded && isToolEmpty(entry)">No output returned</span>
+                <span class="result-preview" *ngIf="!entry._expanded && !isToolEmpty(entry)">{{ entry.content }}</span>
+                <span class="result-label" *ngIf="entry._expanded">Result</span>
+                <span class="bubble-time">{{ formatTimestamp(entry.timestamp) }}</span>
+                <mat-icon class="expand-icon" *ngIf="!isToolEmpty(entry)">{{ entry._expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+              </div>
+              <div class="tool-result-content" *ngIf="entry._expanded">
+                <pre class="result-text">{{ formatJson(entry.content) }}</pre>
+              </div>
+            </div>
+
+            <!-- Inline Event -->
+            <div class="inline-event" *ngIf="entry.entry_type === 'event'" (click)="entry._expanded = !entry._expanded">
+              <div class="inline-event-header clickable">
+                <mat-icon class="inline-event-icon" [style.color]="entry.metadata?.event_color">{{ entry.metadata?.event_icon }}</mat-icon>
+                <span class="inline-event-type" [style.color]="entry.metadata?.event_color">{{ entry.metadata?.event_type }}</span>
+                <span class="inline-event-summary">{{ entry.content }}</span>
+                <span class="bubble-time">{{ formatTimestamp(entry.timestamp) }}</span>
+                <mat-icon class="expand-icon" *ngIf="entry.metadata?.raw">{{ entry._expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+              </div>
+              <div class="inline-event-detail" *ngIf="entry._expanded && entry.metadata?.raw">
+                <pre class="tool-json">{{ formatJson(stringifyMeta(entry.metadata.raw)) }}</pre>
+              </div>
+            </div>
+
+          </ng-container>
+
+          <div class="empty-state" *ngIf="filteredTranscript.length === 0">
+            <mat-icon>chat_bubble_outline</mat-icon>
+            <span *ngIf="!transcriptSearchTerm">No transcript data available. Transcript appears as the agent works.</span>
+            <span *ngIf="transcriptSearchTerm">No matches found.</span>
+          </div>
+        </div>
+        <div class="new-entries-badge" *ngIf="newEntriesCount > 0" (click)="jumpToLatest()">
+          <mat-icon>arrow_downward</mat-icon>
+          {{ newEntriesCount }} new {{ newEntriesCount === 1 ? 'entry' : 'entries' }}
+        </div>
+      </div>
+
+      <!-- Event Stream View -->
+      <app-event-stream-list *ngIf="detailView === 'events'"
+        [events]="agentDisplayEvents"
+        [loading]="false"
+        emptyMessage="No events for this agent"
+        (expand)="toggleEventExpand($event)"
+        (copyJson)="copyEventJson($event.event, $event.mouseEvent)">
+      </app-event-stream-list>
+
+      </div>
+    </div>
+    </div>
+  </div>
+</div>

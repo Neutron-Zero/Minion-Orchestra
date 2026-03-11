@@ -1,0 +1,130 @@
+// Single header bar
+.header-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 84px;
+  padding-top: 20px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .header-logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .header-title-group {
+      display: flex;
+      flex-direction: column;
+
+      .header-title {
+        font-weight: 700;
+        color: #f1f5f9;
+        letter-spacing: -0.3px;
+        line-height: 1.2;
+      }
+
+      .header-tagline {
+        color: rgba(255, 255, 255, 0.3);
+        font-weight: 400;
+      }
+    }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+    }
+
+    .nav-link {
+      padding: 8px 20px;
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 500;
+      line-height: 1;
+      text-decoration: none;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+
+      &:hover {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      &.active {
+        color: #ffffff;
+        background: rgba(124, 58, 237, 0.3);
+      }
+
+      &.settings-link {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+
+        mat-icon {
+          width: 20px;
+          height: 20px;
+        }
+      }
+    }
+  }
+}
+
+// Page container
+.page-container {
+  padding: 0;
+  padding-top: 84px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  position: relative;
+}
+
+// Content area
+.content-area {
+  padding: 8px 20px 20px 20px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  height: calc(100vh - 84px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+// Watermark
+.watermark-icon {
+  position: fixed;
+  bottom: 0px;
+  left: -40px;
+  font-size: 300px !important;
+  width: 300px !important;
+  height: 300px !important;
+  color: rgba(255, 255, 255, 0.025);
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  animation: watermarkRotate 360s linear infinite;
+  transform-origin: center center;
+}
+
+@keyframes watermarkRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

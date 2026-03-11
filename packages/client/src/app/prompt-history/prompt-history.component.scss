@@ -1,0 +1,103 @@
+.prompt-history {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.search-field {
+  width: 300px;
+}
+
+.prompt-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prompt-entry {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  padding: 12px 16px;
+  border-left: 3px solid;
+  transition: background 0.15s ease;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .prompt-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+
+    .prompt-time {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .prompt-agent {
+      color: rgba(255, 255, 255, 0.7);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    .nav-icon {
+      margin-left: auto;
+      color: rgba(255, 255, 255, 0.15);
+      font-size: 16px;
+      transition: color 0.15s ease;
+    }
+  }
+
+  &:hover .nav-icon {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .prompt-text {
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.5;
+    word-break: break-word;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: rgba(255, 255, 255, 0.3);
+
+  .hint {
+    color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.loading {
+  text-align: center;
+  padding: 48px 16px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+// Dark theme form field overrides
+::ng-deep {
+  .search-field {
+    .mat-form-field-outline {
+      color: rgba(255, 255, 255, 0.2);
+    }
+    .mat-form-field-label {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    .mat-input-element {
+      color: #fff;
+    }
+    &.mat-focused .mat-form-field-outline {
+      color: #7c3aed;
+    }
+    &.mat-focused .mat-form-field-label {
+      color: #7c3aed;
+    }
+  }
+}

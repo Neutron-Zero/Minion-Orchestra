@@ -1,0 +1,188 @@
+.event-stream-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.new-events-badge {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(124, 58, 237, 0.9);
+  color: #fff;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  transition: background 0.15s ease;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    background: rgba(124, 58, 237, 1);
+  }
+}
+
+// Header
+.header-subtitle {
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 400;
+  margin-left: 12px;
+}
+
+.stream-header {
+  .control-btn {
+    color: rgba(255, 255, 255, 0.3);
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+
+    &.active {
+      color: #7c3aed;
+    }
+  }
+
+  .live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6b7280;
+    }
+
+    .live-text {
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    &.connected {
+      .live-dot {
+        background: #4caf50;
+        box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+      }
+      .live-text {
+        color: #4caf50;
+      }
+    }
+  }
+}
+
+// Filter bar
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.compact-field {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 5px 10px;
+  gap: 6px;
+
+  .field-icon {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  input {
+    background: none;
+    border: none;
+    outline: none;
+    color: #e6edf3;
+    font: inherit;
+    width: 180px;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  &:focus-within {
+    border-color: rgba(124, 58, 237, 0.5);
+  }
+}
+
+.compact-select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 6px 10px;
+  color: #e6edf3;
+  font: inherit;
+  outline: none;
+  cursor: pointer;
+  appearance: auto;
+
+  option {
+    background: #161b22;
+    color: #e6edf3;
+  }
+
+  &:focus {
+    border-color: rgba(124, 58, 237, 0.5);
+  }
+}
+
+// The event-stream-list component is now in app-event-stream-list
+// Host the component to fill available space
+app-event-stream-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// Dark theme form field overrides
+::ng-deep {
+  .filter-field {
+    .mat-form-field-outline {
+      color: rgba(255, 255, 255, 0.2);
+    }
+    .mat-form-field-label {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    .mat-input-element {
+      color: #fff;
+    }
+    .mat-select-value {
+      color: rgba(255, 255, 255, 0.85);
+    }
+    .mat-select-arrow {
+      color: rgba(255, 255, 255, 0.4);
+    }
+    &.mat-focused .mat-form-field-outline {
+      color: #7c3aed;
+    }
+    &.mat-focused .mat-form-field-label {
+      color: #7c3aed;
+    }
+  }
+}

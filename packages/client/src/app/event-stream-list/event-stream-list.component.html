@@ -1,0 +1,47 @@
+<div class="event-stream" #scrollContainer>
+  <div *ngFor="let event of events; trackBy: trackByEvent"
+       class="event-row"
+       [style.borderLeftColor]="event._agentColor"
+       [class.expanded]="event._isExpanded"
+       (click)="onExpandClick(event)">
+
+    <!-- Main Row -->
+    <div class="event-main">
+      <div class="event-left">
+        <span class="agent-badge" [style.backgroundColor]="event._agentColor">{{ event._agentName || 'agent' }}</span>
+        <span class="agent-id">{{ formatAgentId(event.agent_id) }}</span>
+        <span class="event-type-badge" [style.backgroundColor]="event._eventColor + '22'" [style.color]="event._eventColor">
+          <mat-icon class="badge-icon">{{ event._eventIcon }}</mat-icon>
+          {{ event.event_type }}
+        </span>
+      </div>
+      <span class="event-time">{{ event._formattedTime }}</span>
+    </div>
+
+    <!-- Tool / Summary Row -->
+    <div class="event-detail-line" *ngIf="event._toolName || event._summary">
+      <span class="tool-label" *ngIf="event._toolName">{{ event._toolName }}</span>
+      <span class="tool-detail" *ngIf="event._toolDetail">{{ event._toolDetail }}</span>
+      <span class="event-summary" *ngIf="!event._toolName && event._summary">{{ event._summary }}</span>
+    </div>
+
+    <!-- Expandable Metadata -->
+    <div class="event-metadata" *ngIf="event._isExpanded" (click)="$event.stopPropagation()">
+      <div class="metadata-header">
+        <span>Metadata</span>
+        <button mat-icon-button (click)="onCopyClick(event, $event)" matTooltip="Copy JSON" class="copy-btn">
+          <mat-icon>content_copy</mat-icon>
+        </button>
+      </div>
+      <pre class="metadata-json">{{ event._metadataJson }}</pre>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div class="empty-state" *ngIf="!loading && events.length === 0">
+    <mat-icon>timeline</mat-icon>
+    <p>{{ emptyMessage }}</p>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">Loading events...</div>
+</div>
