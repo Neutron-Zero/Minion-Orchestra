@@ -135,6 +135,13 @@ async def init_db() -> aiosqlite.Connection:
     return _db
 
 
+async def _table_exists(db: aiosqlite.Connection, name: str) -> bool:
+    cur = await db.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)
+    )
+    return await cur.fetchone() is not None
+
+
 async def _migrate_to_uuid(db: aiosqlite.Connection) -> None:
     """Migrate tables from INTEGER AUTOINCREMENT PKs to TEXT UUID PKs."""
     # Check if events table exists and has integer PK
@@ -153,22 +160,17 @@ async def _migrate_to_uuid(db: aiosqlite.Connection) -> None:
         if has_agent_id:
             return  # already migrated
         # sessions needs migration: old schema used id as agent_id
-        await _migrate_sessions(db)
-        # transcript_scan_state needs migration too
-        await _migrate_scan_state(db)
+        if await _table_exists(db, "sessions"):
+            await _migrate_sessions(db)
+        if await _table_exists(db, "transcript_scan_state"):
+            await _migrate_scan_state(db)
         await db.commit()
         return
 
     print("  Migrating database to UUID primary keys...")
 
-    async def _table_exists(name: str) -> bool:
-        cur = await db.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)
-        )
-        return await cur.fetchone() is not None
-
     # Migrate events
-    if await _table_exists("events"):
+    if await _table_exists(db, "events"):
         await db.executescript("""
             ALTER TABLE events RENAME TO _events_old;
             CREATE TABLE events (
@@ -187,7 +189,7 @@ async def _migrate_to_uuid(db: aiosqlite.Connection) -> None:
         await db.execute("DROP TABLE _events_old")
 
     # Migrate logs
-    if await _table_exists("logs"):
+    if await _table_exists(db, "logs"):
         await db.executescript("""
             ALTER TABLE logs RENAME TO _logs_old;
             CREATE TABLE logs (
@@ -206,7 +208,7 @@ async def _migrate_to_uuid(db: aiosqlite.Connection) -> None:
         await db.execute("DROP TABLE _logs_old")
 
     # Migrate transcript_entries
-    if await _table_exists("transcript_entries"):
+    if await _table_exists(db, "transcript_entries"):
         await db.executescript("""
             ALTER TABLE transcript_entries RENAME TO _te_old;
             CREATE TABLE transcript_entries (
@@ -225,11 +227,11 @@ async def _migrate_to_uuid(db: aiosqlite.Connection) -> None:
         await db.execute("DROP TABLE _te_old")
 
     # Migrate sessions (old: id was the agent_id)
-    if await _table_exists("sessions"):
+    if await _table_exists(db, "sessions"):
         await _migrate_sessions(db)
 
     # Migrate transcript_scan_state (old: agent_id was the PK)
-    if await _table_exists("transcript_scan_state"):
+    if await _table_exists(db, "transcript_scan_state"):
         await _migrate_scan_state(db)
 
     await db.commit()
