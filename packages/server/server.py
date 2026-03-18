@@ -33,7 +33,7 @@ cleanup_service = CleanupService(agent_manager, task_queue, sio)
 session_watcher = SessionWatcher(agent_manager, sio)
 transcript_scanner = TranscriptScanner(sio)
 
-VERSION = "1.8.1"
+VERSION = "1.9.0"
 
 @asynccontextmanager
 async def lifespan(app):
@@ -115,6 +115,7 @@ async def lifespan(app):
     session_watcher.start()
     transcript_scanner.start_polling()
     await transcript_scanner.backfill_images()
+    await transcript_scanner.backfill_tokens()
     yield
     # Shutdown: stop background threads first, then async resources
     try:

@@ -191,6 +191,53 @@
   }
 }
 
+// Token card: spans full width
+.token-card {
+  grid-column: span 3;
+
+  .chart-container {
+    height: 300px;
+    flex: 0 0 300px;
+    position: relative;
+  }
+
+  .chart-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+}
+
+.token-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.model-select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+
+  option {
+    background: #161b22;
+    color: #e6edf3;
+  }
+
+  &:focus {
+    border-color: rgba(124, 58, 237, 0.5);
+  }
+}
+
 // Empty state
 .empty-insight {
   text-align: center;

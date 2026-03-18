@@ -113,6 +113,35 @@
         </div>
       </div>
 
+      <ng-container *ngIf="agent.total_input_tokens > 0 || agent.total_output_tokens > 0">
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section">
+          <span class="section-label">Token Usage</span>
+          <div class="token-grid">
+            <div class="token-row">
+              <span class="token-label">Input</span>
+              <span class="token-value">{{ formatTokenCount(agent.total_input_tokens) }}</span>
+            </div>
+            <div class="token-row">
+              <span class="token-label">Output</span>
+              <span class="token-value">{{ formatTokenCount(agent.total_output_tokens) }}</span>
+            </div>
+            <div class="token-row" *ngIf="agent.total_cache_read_tokens > 0">
+              <span class="token-label">Cache Read</span>
+              <span class="token-value">{{ formatTokenCount(agent.total_cache_read_tokens) }}</span>
+            </div>
+            <div class="token-row" *ngIf="agent.total_cache_write_tokens > 0">
+              <span class="token-label">Cache Write</span>
+              <span class="token-value">{{ formatTokenCount(agent.total_cache_write_tokens) }}</span>
+            </div>
+            <div class="token-row token-total">
+              <span class="token-label">Total</span>
+              <span class="token-value">{{ formatTokenCount((agent.total_input_tokens || 0) + (agent.total_output_tokens || 0)) }}</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
       <ng-container *ngIf="subagents.length > 0">
         <div class="sidebar-divider"></div>
         <div class="sidebar-section" *ngIf="activeSubagents.length > 0">

@@ -174,12 +174,30 @@
 }
 
 .col-folder {
-  width: 160px;
-  min-width: 120px;
+  width: 140px;
+  min-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: rgba(255, 255, 255, 0.5);
+}
+
+.col-model {
+  width: 110px;
+  min-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+}
+
+.col-tokens {
+  width: 80px;
+  min-width: 60px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+  font-size: 12px;
 }
 
 .col-start {

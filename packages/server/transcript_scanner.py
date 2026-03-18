@@ -20,9 +20,13 @@ from typing import Any
 import socketio
 
 from database import (
+    batch_update_transcript_tokens,
+    get_all_scan_states,
+    get_entries_needing_backfill,
     get_transcript_scan_state,
     get_unchecked_image_entries,
     store_transcript_entries_batch,
+    update_session_tokens,
     update_transcript_entry_metadata,
     upsert_transcript_scan_state,
 )
@@ -103,6 +107,90 @@ class TranscriptScanner:
         if captured:
             print(f"  Image backfill: captured {captured} image(s) from {len(entries)} entries")
 
+    async def backfill_tokens(self):
+        """One-time backfill: read JSONL files for entries missing raw_entry/token data."""
+        scan_states = await get_all_scan_states()
+        if not scan_states:
+            return
+
+        total_updated = 0
+        agents_updated = 0
+        for state in scan_states:
+            agent_id = state["agent_id"]
+            jsonl_path = state.get("jsonl_path", "")
+            entries = await get_entries_needing_backfill(agent_id)
+            if not entries:
+                continue
+
+            # Read the JSONL file
+            if not jsonl_path or not os.path.isfile(jsonl_path):
+                continue
+
+            try:
+                with open(jsonl_path, "r", encoding="utf-8", errors="replace") as f:
+                    lines = f.readlines()
+            except (OSError, IOError):
+                continue
+
+            # Build line_number -> raw_line map
+            line_map: dict[int, str] = {}
+            for i, line in enumerate(lines, 1):
+                line_map[i] = line.strip()
+
+            # Group entries by line_number to assign tokens to first entry only
+            from collections import defaultdict
+            by_line: dict[int, list[dict]] = defaultdict(list)
+            for entry in entries:
+                by_line[entry["line_number"]].append(entry)
+
+            updates: list[tuple] = []
+            for line_num, line_entries in by_line.items():
+                raw_line = line_map.get(line_num, "")
+                if not raw_line:
+                    continue
+
+                # Extract model/tokens from assistant lines
+                model = None
+                input_tokens = 0
+                output_tokens = 0
+                cache_read_tokens = 0
+                cache_write_tokens = 0
+
+                try:
+                    data = json.loads(raw_line)
+                    if data.get("type") == "assistant":
+                        message = data.get("message", {})
+                        model = message.get("model") or data.get("model")
+                        usage = message.get("usage") or {}
+                        input_tokens = usage.get("input_tokens", 0)
+                        output_tokens = usage.get("output_tokens", 0)
+                        cache_read_tokens = usage.get("cache_read_input_tokens", 0) or usage.get("cache_read_tokens", 0)
+                        cache_write_tokens = usage.get("cache_creation_input_tokens", 0) or usage.get("cache_write_tokens", 0)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+                first = True
+                for entry in line_entries:
+                    updates.append((
+                        raw_line,
+                        model,
+                        input_tokens if first else 0,
+                        output_tokens if first else 0,
+                        cache_read_tokens if first else 0,
+                        cache_write_tokens if first else 0,
+                        entry["id"],
+                    ))
+                    first = False
+
+            if updates:
+                await batch_update_transcript_tokens(updates)
+                await update_session_tokens(agent_id)
+                total_updated += len(updates)
+                agents_updated += 1
+
+        if total_updated:
+            print(f"  Token backfill: updated {total_updated} entries across {agents_updated} agent(s)")
+
     async def _poll_loop(self):
         """Periodically scan all tracked agents for new transcript entries."""
         while True:
@@ -170,16 +258,22 @@ class TranscriptScanner:
         if is_initial and len(entries) > MAX_INITIAL_ENTRIES:
             entries = entries[-MAX_INITIAL_ENTRIES:]
 
+        has_tokens = False
         if entries:
+            has_tokens = any(e.get("input_tokens", 0) > 0 or e.get("output_tokens", 0) > 0 for e in entries)
             await store_transcript_entries_batch(entries)
 
-            # Broadcast new entries
+            # Broadcast new entries (exclude raw_entry from socket payload)
             for entry in entries:
+                payload = {k: v for k, v in entry.items() if k != "raw_entry"}
                 await self._sio.emit("transcript", {
                     "agent_id": agent_id,
                     "session_id": session_id,
-                    **entry,
+                    **payload,
                 })
+
+            if has_tokens:
+                await update_session_tokens(agent_id)
 
         # Update scan state with actual byte position consumed
         await upsert_transcript_scan_state(
@@ -239,18 +333,26 @@ class TranscriptScanner:
         timestamp = data.get("timestamp", "")
 
         if entry_type == "user":
-            return TranscriptScanner._parse_user(data, agent_id, session_id, line_number, timestamp)
+            entries = TranscriptScanner._parse_user(data, agent_id, session_id, line_number, timestamp)
         elif entry_type == "assistant":
-            return TranscriptScanner._parse_assistant(data, agent_id, session_id, line_number, timestamp)
-        # Skip: progress, system, file-history-snapshot, queue-operation, summary, etc.
-        return []
+            entries = TranscriptScanner._parse_assistant(data, agent_id, session_id, line_number, timestamp)
+        else:
+            # Skip: progress, system, file-history-snapshot, queue-operation, summary, etc.
+            return []
+
+        # Stamp raw_entry on all entries from this line
+        for e in entries:
+            e["raw_entry"] = raw_line
+        return entries
 
     @staticmethod
     def _make_entry(
         agent_id: str, session_id: str, entry_type: str, line_number: int,
         timestamp: str, content: str | None = None, tool_name: str | None = None,
         tool_input: str | None = None, tool_use_id: str | None = None,
-        metadata: Any = None,
+        metadata: Any = None, raw_entry: str | None = None, model: str | None = None,
+        input_tokens: int = 0, output_tokens: int = 0,
+        cache_read_tokens: int = 0, cache_write_tokens: int = 0,
     ) -> dict[str, Any]:
         return {
             "id": str(uuid.uuid4()),
@@ -264,6 +366,12 @@ class TranscriptScanner:
             "timestamp": timestamp,
             "line_number": line_number,
             "metadata": metadata,
+            "raw_entry": raw_entry,
+            "model": model,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cache_read_tokens": cache_read_tokens,
+            "cache_write_tokens": cache_write_tokens,
         }
 
     @staticmethod
@@ -316,12 +424,28 @@ class TranscriptScanner:
         content = message.get("content", "")
         entries: list[dict[str, Any]] = []
 
+        # Extract model and token usage from the message envelope
+        model = message.get("model") or data.get("model")
+        usage = message.get("usage") or {}
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
+        cache_read_tokens = usage.get("cache_read_input_tokens", 0) or usage.get("cache_read_tokens", 0)
+        cache_write_tokens = usage.get("cache_creation_input_tokens", 0) or usage.get("cache_write_tokens", 0)
+
+        # First entry per line gets the token counts (prevents double-counting)
+        first_entry = True
+
         if isinstance(content, str):
             if content.strip():
                 entries.append(TranscriptScanner._make_entry(
                     agent_id, session_id, "assistant", line_number, timestamp,
-                    content=content,
+                    content=content, model=model,
+                    input_tokens=input_tokens if first_entry else 0,
+                    output_tokens=output_tokens if first_entry else 0,
+                    cache_read_tokens=cache_read_tokens if first_entry else 0,
+                    cache_write_tokens=cache_write_tokens if first_entry else 0,
                 ))
+                first_entry = False
         elif isinstance(content, list):
             for block in content:
                 btype = block.get("type", "")
@@ -330,16 +454,26 @@ class TranscriptScanner:
                     if text:
                         entries.append(TranscriptScanner._make_entry(
                             agent_id, session_id, "assistant", line_number, timestamp,
-                            content=text,
+                            content=text, model=model,
+                            input_tokens=input_tokens if first_entry else 0,
+                            output_tokens=output_tokens if first_entry else 0,
+                            cache_read_tokens=cache_read_tokens if first_entry else 0,
+                            cache_write_tokens=cache_write_tokens if first_entry else 0,
                         ))
+                        first_entry = False
                 elif btype == "thinking":
                     text = block.get("thinking", "").strip()
                     if text:
                         entries.append(TranscriptScanner._make_entry(
                             agent_id, session_id, "assistant", line_number, timestamp,
-                            content=text,
+                            content=text, model=model,
                             metadata={"is_thinking": True},
+                            input_tokens=input_tokens if first_entry else 0,
+                            output_tokens=output_tokens if first_entry else 0,
+                            cache_read_tokens=cache_read_tokens if first_entry else 0,
+                            cache_write_tokens=cache_write_tokens if first_entry else 0,
                         ))
+                        first_entry = False
                 elif btype == "tool_use":
                     tool_input_str = json.dumps(block.get("input", {}))
                     entries.append(TranscriptScanner._make_entry(
@@ -347,7 +481,13 @@ class TranscriptScanner:
                         tool_name=block.get("name"),
                         tool_input=tool_input_str,
                         tool_use_id=block.get("id"),
+                        model=model,
+                        input_tokens=input_tokens if first_entry else 0,
+                        output_tokens=output_tokens if first_entry else 0,
+                        cache_read_tokens=cache_read_tokens if first_entry else 0,
+                        cache_write_tokens=cache_write_tokens if first_entry else 0,
                     ))
+                    first_entry = False
         return entries
 
     @staticmethod
@@ -446,13 +586,14 @@ class TranscriptScanner:
         payload = data.get("data", {})
         mk = TranscriptScanner._make_entry
 
+        entries: list[dict[str, Any]] = []
+
         if entry_type == "user.message":
             content = payload.get("content", "")
             if content.strip():
-                return [mk(agent_id, session_id, "user", line_number, timestamp, content=content)]
+                entries = [mk(agent_id, session_id, "user", line_number, timestamp, content=content)]
 
         elif entry_type == "assistant.message":
-            entries: list[dict[str, Any]] = []
             # Thinking / reasoning
             reasoning = payload.get("reasoningText", "")
             if reasoning.strip():
@@ -475,7 +616,6 @@ class TranscriptScanner:
                     tool_input=json.dumps(tool_req.get("arguments", {})),
                     tool_use_id=tool_req.get("toolCallId"),
                 ))
-            return entries
 
         elif entry_type == "tool.execution_complete":
             result = payload.get("result", {})
@@ -483,13 +623,14 @@ class TranscriptScanner:
                 text = result.get("content") or result.get("detailedContent") or ""
             else:
                 text = str(result) if result else ""
-            return [mk(
+            entries = [mk(
                 agent_id, session_id, "tool_result", line_number, timestamp,
                 content=text,
                 tool_use_id=payload.get("toolCallId"),
                 metadata={"success": payload.get("success", True)},
             )]
 
-        # Skip: session.start, assistant.turn_start, assistant.turn_end,
-        # tool.execution_start, etc.
-        return []
+        # Stamp raw_entry on all entries from this line
+        for e in entries:
+            e["raw_entry"] = raw_line
+        return entries

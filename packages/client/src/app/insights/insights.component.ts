@@ -30,6 +30,7 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('pulseCanvas') pulseCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('statusCanvas') statusCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('statusOverTimeCanvas') statusOverTimeCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('tokenCanvas') tokenCanvas!: ElementRef<HTMLCanvasElement>;
 
   dailyData: DailyEntry[] = [];
   heatmapRows: HeatmapRow[] = [];
@@ -46,6 +47,33 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     totalEvents: 0,
     mostActiveDay: '-'
   };
+
+  // Token insights
+  tokenDaily: { date: string; input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number }[] = [];
+  tokenByModel: { model_name: string; session_count: number; input_tokens: number; output_tokens: number }[] = [];
+  tokenTotalInput = 0;
+  tokenTotalOutput = 0;
+  tokenTotalCacheRead = 0;
+  tokenTopModel = '-';
+  private tokenChart?: Chart;
+
+  tokenTimeRanges: TimeRange[] = [
+    { label: '1m', minutes: 1 },
+    { label: '5m', minutes: 5 },
+    { label: '15m', minutes: 15 },
+    { label: '1h', minutes: 60 },
+    { label: '6h', minutes: 360 },
+    { label: '24h', minutes: 1440 },
+    { label: '7d', minutes: 10080 },
+    { label: '30d', minutes: 43200 },
+    { label: '90d', minutes: 129600 },
+  ];
+  selectedTokenRange = parseInt(localStorage.getItem('mo_token_range') || '43200', 10);
+  tokenModels: string[] = [];
+  selectedTokenModel = '';
+  private tokenRefreshTimer?: any;
+  private tokenChartRelativeMode = false;
+  _tokenVisibleTicks = new Map<number, string>();
 
   statusTimeRanges: TimeRange[] = [
     { label: '1m', minutes: 1 },
@@ -96,6 +124,8 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadInsights();
+    this.loadTokenInsights();
+    this.startTokenUpdates();
 
     this.agentSub = this.agentService.getAgents().subscribe(agents => {
       this.updateDoughnutChart(agents);
@@ -118,9 +148,11 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.pulseChart?.destroy();
     this.statusChart?.destroy();
     this.statusOverTimeChart?.destroy();
+    this.tokenChart?.destroy();
     this.agentSub?.unsubscribe();
     this.stopStatusUpdates();
     this.stopPulseUpdates();
+    this.stopTokenUpdates();
   }
 
   setHeatmapRange(days: number): void {
@@ -633,5 +665,346 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   trackByCell(index: number): number {
     return index;
+  }
+
+  formatTokenCount(count: number): string {
+    if (!count || count === 0) return '0';
+    if (count >= 1_000_000) return (count / 1_000_000).toFixed(1) + 'M';
+    if (count >= 1_000) return (count / 1_000).toFixed(1) + 'K';
+    return count.toString();
+  }
+
+  setTokenTimeRange(days: number): void {
+    this.selectedTokenRange = days;
+    localStorage.setItem('mo_token_range', String(days));
+    // Force chart recreation on range change (tick mode may differ)
+    this.tokenChart?.destroy();
+    this.tokenChart = undefined as any;
+    this.loadTokenInsights();
+    this.startTokenUpdates();
+    this.cdr.markForCheck();
+  }
+
+  setTokenModel(model: string): void {
+    this.selectedTokenModel = model;
+    this.loadTokenInsights();
+    this.cdr.markForCheck();
+  }
+
+  private loadTokenInsights(): void {
+    const since = this.selectedTokenRange > 0
+      ? new Date(Date.now() - this.selectedTokenRange * 60 * 1000).toISOString()
+      : undefined;
+
+    // Short ranges (<= 24h): use timeseries for per-minute/hour granularity
+    if (this.selectedTokenRange > 0 && this.selectedTokenRange <= 1440) {
+      this.loadTokenTimeseries(since!);
+    } else {
+      this.loadTokenAggregates(since);
+    }
+  }
+
+  private loadTokenTimeseries(since: string): void {
+    // Bucket size in seconds for the API, aim for ~60 data points
+    let bucketSeconds: number;
+    if (this.selectedTokenRange <= 1) bucketSeconds = 1;        // 1s buckets → 60 points
+    else if (this.selectedTokenRange <= 5) bucketSeconds = 5;   // 5s buckets → 60 points
+    else if (this.selectedTokenRange <= 15) bucketSeconds = 15; // 15s buckets → 60 points
+    else if (this.selectedTokenRange <= 60) bucketSeconds = 60; // 1min buckets → 60 points
+    else if (this.selectedTokenRange <= 360) bucketSeconds = 360;  // 6min buckets → 60 points
+    else bucketSeconds = 3600;                                     // 1hr buckets
+
+    const bucket = Math.max(1, Math.floor(bucketSeconds / 60)) || 1;
+    const tsParams: Record<string, string> = { since, bucket: String(bucket), bucket_seconds: String(bucketSeconds) };
+    if (this.selectedTokenModel) tsParams['model'] = this.selectedTokenModel;
+
+    const aggParams: Record<string, string> = { since };
+
+    forkJoin({
+      ts: this.http.get<any>(`${environment.serverUrl}/api/insights/tokens/timeseries`, { params: tsParams }),
+      agg: this.http.get<any>(`${environment.serverUrl}/api/insights/tokens`, { params: aggParams }),
+    }).subscribe({
+      next: ({ ts, agg }) => {
+        if (agg.success) {
+          const allModels = (agg.by_model || []).map((m: any) => m.model_name).filter((m: string) => m);
+          if (allModels.length > 0) this.tokenModels = allModels;
+          this.tokenByModel = agg.by_model || [];
+          this.tokenTopModel = this.tokenByModel.length > 0 ? (this.tokenByModel[0].model_name || '-') : '-';
+        }
+
+        if (!ts.success) return;
+        const timeseries: any[] = ts.timeseries || [];
+
+        // Build a lookup from bucket timestamps to data, snapped to bucket boundaries
+        const bucketMs = bucketSeconds * 1000;
+        const dataMap = new Map<number, any>();
+        for (const t of timeseries) {
+          const b = t.bucket || '';
+          // Normalize truncated timestamps: "2026-03-18T00" -> "2026-03-18T00:00:00"
+          let normalized = b;
+          if (/^\d{4}-\d{2}-\d{2}T\d{2}$/.test(b)) normalized = b + ':00:00';
+          else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(b)) normalized = b + ':00';
+          else if (/^\d{4}-\d{2}-\d{2}$/.test(b)) normalized = b + 'T00:00:00';
+          const ms = new Date(normalized + 'Z').getTime();
+          if (isNaN(ms)) continue;
+          // Snap to nearest bucket boundary
+          const snapped = Math.floor(ms / bucketMs) * bucketMs;
+          const existing = dataMap.get(snapped);
+          if (existing) {
+            // Merge into same bucket
+            existing.input_tokens = (existing.input_tokens || 0) + (t.input_tokens || 0);
+            existing.output_tokens = (existing.output_tokens || 0) + (t.output_tokens || 0);
+            existing.cache_read_tokens = (existing.cache_read_tokens || 0) + (t.cache_read_tokens || 0);
+            existing.cache_write_tokens = (existing.cache_write_tokens || 0) + (t.cache_write_tokens || 0);
+          } else {
+            dataMap.set(snapped, { ...t });
+          }
+        }
+
+        // Fill all time slots from range start to now
+        const rangeStart = new Date(since).getTime();
+        // Align to bucket boundary
+        const firstBucket = Math.floor(rangeStart / bucketMs) * bucketMs;
+        const now = Date.now();
+        const filled: { date: string; input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number }[] = [];
+
+        for (let ts = firstBucket; ts <= now; ts += bucketMs) {
+          const d = new Date(ts);
+          let label: string;
+          if (this.selectedTokenRange <= 1440) {
+            const hh = d.getHours().toString().padStart(2, '0');
+            const mm = d.getMinutes().toString().padStart(2, '0');
+            label = `${hh}:${mm}`;
+          } else {
+            const mo = (d.getMonth() + 1).toString().padStart(2, '0');
+            const dd = d.getDate().toString().padStart(2, '0');
+            const hh = d.getHours().toString().padStart(2, '0');
+            const mi = d.getMinutes().toString().padStart(2, '0');
+            label = `${mo}-${dd} ${hh}:${mi}`;
+          }
+
+          // Find matching data point (check within bucket window)
+          const t = dataMap.get(ts);
+          filled.push({
+            date: label,
+            input_tokens: t?.input_tokens || 0,
+            output_tokens: t?.output_tokens || 0,
+            cache_read_tokens: t?.cache_read_tokens || 0,
+            cache_write_tokens: t?.cache_write_tokens || 0,
+          });
+        }
+
+        this.tokenDaily = filled;
+
+        this.updateTokenStats();
+        this.cdr.markForCheck();
+        setTimeout(() => this.createTokenChart(), 100);
+      }
+    });
+  }
+
+  private loadTokenAggregates(since?: string): void {
+    const params: Record<string, string> = {};
+    if (since) params['since'] = since;
+
+    this.http.get<any>(`${environment.serverUrl}/api/insights/tokens`, { params }).subscribe({
+      next: (res) => {
+        if (!res.success) return;
+
+        const allModels = (res.by_model || []).map((m: any) => m.model_name).filter((m: string) => m);
+        if (allModels.length > 0) this.tokenModels = allModels;
+        this.tokenByModel = res.by_model || [];
+        this.tokenTopModel = this.tokenByModel.length > 0 ? (this.tokenByModel[0].model_name || '-') : '-';
+
+        if (this.selectedTokenModel) {
+          const sessions = (res.sessions || []).filter((s: any) => s.model_name === this.selectedTokenModel);
+          const dayMap = new Map<string, { input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number }>();
+          for (const s of sessions) {
+            const date = (s.start_time || '').slice(0, 10);
+            if (!date) continue;
+            const entry = dayMap.get(date) || { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 };
+            entry.input_tokens += s.total_input_tokens || 0;
+            entry.output_tokens += s.total_output_tokens || 0;
+            entry.cache_read_tokens += s.total_cache_read_tokens || 0;
+            entry.cache_write_tokens += s.total_cache_write_tokens || 0;
+            dayMap.set(date, entry);
+          }
+          this.tokenDaily = Array.from(dayMap.entries())
+            .map(([date, d]) => ({ date, ...d }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+        } else {
+          this.tokenDaily = res.daily || [];
+        }
+
+        this.updateTokenStats();
+        this.cdr.markForCheck();
+        setTimeout(() => this.createTokenChart(), 100);
+      }
+    });
+  }
+
+  private stopTokenUpdates(): void {
+    if (this.tokenRefreshTimer) { clearInterval(this.tokenRefreshTimer); this.tokenRefreshTimer = undefined; }
+  }
+
+  private startTokenUpdates(): void {
+    this.stopTokenUpdates();
+    // Match status chart pattern: short ranges poll faster, long ranges slower
+    let intervalMs: number;
+    if (this.selectedTokenRange <= 1) intervalMs = 1000;
+    else if (this.selectedTokenRange <= 5) intervalMs = 2000;
+    else if (this.selectedTokenRange <= 15) intervalMs = 5000;
+    else if (this.selectedTokenRange < 10080) intervalMs = 10000;
+    else intervalMs = 60000;
+    this.tokenRefreshTimer = setInterval(() => this.loadTokenInsights(), intervalMs);
+  }
+
+  private buildTokenTicks(): void {
+    const range = this.selectedTokenRange;
+    const n = this.tokenDaily.length;
+    if (n === 0) return;
+    let ticks: string[];
+    if (range <= 1) {
+      ticks = ['-60s', '-50s', '-40s', '-30s', '-20s', '-10s', '0'];
+    } else if (range <= 5) {
+      ticks = ['-5m', '-4m', '-3m', '-2m', '-1m', '0'];
+    } else if (range <= 15) {
+      ticks = ['-15m', '-10m', '-5m', '0'];
+    } else if (range <= 60) {
+      ticks = ['-60m', '-50m', '-40m', '-30m', '-20m', '-10m', '0'];
+    } else if (range <= 360) {
+      ticks = ['-6h', '-5h', '-4h', '-3h', '-2h', '-1h', '0'];
+    } else if (range <= 1440) {
+      ticks = ['-24h', '-20h', '-16h', '-12h', '-8h', '-4h', '0'];
+    } else {
+      ticks = []; // 7d+ use date labels
+    }
+    this._tokenVisibleTicks = new Map<number, string>();
+    if (ticks.length > 0) {
+      for (let t = 0; t < ticks.length; t++) {
+        const idx = Math.round(t * (n - 1) / (ticks.length - 1));
+        this._tokenVisibleTicks.set(idx, ticks[t]);
+      }
+    }
+  }
+
+  private updateTokenStats(): void {
+    this.tokenTotalInput = this.tokenDaily.reduce((s, d) => s + (d.input_tokens || 0), 0);
+    this.tokenTotalOutput = this.tokenDaily.reduce((s, d) => s + (d.output_tokens || 0), 0);
+    this.tokenTotalCacheRead = this.tokenDaily.reduce((s, d) => s + (d.cache_read_tokens || 0), 0);
+  }
+
+  private createTokenChart(): void {
+    if (!this.tokenCanvas) return;
+
+    const useRelativeTicks = this.selectedTokenRange > 0 && this.selectedTokenRange <= 1440;
+    this.buildTokenTicks();
+
+    // For relative tick ranges, use empty labels like pulse/status charts
+    // For 7d+, use date labels (MM-DD)
+    let labels: string[];
+    if (useRelativeTicks) {
+      labels = this.tokenDaily.map(() => '');
+    } else {
+      labels = this.tokenDaily.map(d => {
+        const date = d.date || '';
+        // Daily aggregates come as "2026-03-12" -> "03-12"
+        if (date.length === 10) return date.slice(5);
+        // Fallback
+        return date;
+      });
+    }
+
+    // Use 0.1 instead of 0 so log scale can plot a continuous line at the baseline
+    const inputData = this.tokenDaily.map(d => d.input_tokens || 0.1);
+    const outputData = this.tokenDaily.map(d => d.output_tokens || 0.1);
+    const cacheData = this.tokenDaily.map(d => d.cache_read_tokens || 0.1);
+
+    // Reuse chart if it exists, just update data
+    if (this.tokenChart?.canvas) {
+      this.tokenChart.data.labels = labels;
+      this.tokenChart.data.datasets[0].data = cacheData;
+      this.tokenChart.data.datasets[1].data = outputData;
+      this.tokenChart.data.datasets[2].data = inputData;
+      (this.tokenChart.options.scales as any).x.labels = labels;
+      this.tokenChart.update();
+      return;
+    }
+
+    const fmtTick = (value: any) => {
+      if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M';
+      if (value >= 1_000) return (value / 1_000).toFixed(0) + 'K';
+      return value;
+    };
+
+    this.tokenChart = new Chart(this.tokenCanvas.nativeElement, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: '  Cache Read',
+            data: cacheData,
+            borderColor: '#3182CE',
+            backgroundColor: 'rgba(49, 130, 206, 0.15)',
+            tension: 0.4, borderWidth: 2, fill: true,
+            pointRadius: 0, pointHoverRadius: 4,
+          },
+          {
+            label: '  Output',
+            data: outputData,
+            borderColor: '#38A169',
+            backgroundColor: 'rgba(56, 161, 105, 0.15)',
+            tension: 0.4, borderWidth: 3, fill: true,
+            pointRadius: 0, pointHoverRadius: 4,
+          },
+          {
+            label: '  Input',
+            data: inputData,
+            borderColor: '#7c3aed',
+            backgroundColor: 'rgba(124, 58, 237, 0.15)',
+            tension: 0.4, borderWidth: 2, fill: true,
+            pointRadius: 0, pointHoverRadius: 4,
+          },
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 100 },
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#ffffff', usePointStyle: true, pointStyle: 'circle', padding: 20 }
+          }
+        },
+        scales: {
+          x: {
+            type: 'category',
+            labels: labels,
+            ticks: useRelativeTicks ? {
+              color: 'rgba(255,255,255,0.5)',
+              font: { size: 12 },
+              maxRotation: 0,
+              autoSkip: false,
+              callback: ((_val: any, index: number): string => this._tokenVisibleTicks.get(index) ?? ''),
+            } : {
+              color: 'rgba(255,255,255,0.5)',
+              font: { size: 12 },
+              maxRotation: 0,
+              autoSkip: true,
+            },
+            grid: { display: false }
+          },
+          y: {
+            type: 'logarithmic',
+            min: 0.1,
+            ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 }, callback: fmtTick },
+            grid: { color: 'rgba(255,255,255,0.1)' }
+          }
+        }
+      }
+    });
   }
 }

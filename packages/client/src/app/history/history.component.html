@@ -30,6 +30,8 @@
       <span class="col-status">Status</span>
       <span class="col-agent">Agent</span>
       <span class="col-folder">Folder</span>
+      <span class="col-model">Model</span>
+      <span class="col-tokens">Tokens</span>
       <span class="col-start">Started</span>
       <span class="col-duration">Duration</span>
       <span class="col-pid">PID</span>
@@ -57,6 +59,12 @@
 
       <span class="col-folder" [title]="row.session.working_directory">
         {{ getFolderName(row.session.working_directory) }}
+      </span>
+
+      <span class="col-model" [title]="row.session.model_name || ''">{{ getShortModel(row.session.model_name) }}</span>
+
+      <span class="col-tokens" [title]="getTotalTokens(row.session) > 0 ? 'In: ' + formatTokenCount(row.session.total_input_tokens) + ' / Out: ' + formatTokenCount(row.session.total_output_tokens) : ''">
+        {{ formatTokenCount(getTotalTokens(row.session)) }}
       </span>
 
       <span class="col-start">{{ formatTimestamp(row.session.start_time) }}</span>

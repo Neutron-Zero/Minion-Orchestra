@@ -14,6 +14,11 @@ interface Session {
   end_time: string | null;
   pid: number;
   metadata: Record<string, any> | null;
+  model_name: string | null;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cache_read_tokens: number;
+  total_cache_write_tokens: number;
 }
 
 interface DisplayRow {
@@ -232,6 +237,29 @@ export class HistoryComponent implements OnInit {
       if (!isNaN(parentEnd) && childStart > parentEnd) return false;
     }
     return true;
+  }
+
+  formatTokenCount(count: number): string {
+    if (!count || count === 0) return '-';
+    if (count >= 1_000_000) return (count / 1_000_000).toFixed(1) + 'M';
+    if (count >= 1_000) return (count / 1_000).toFixed(1) + 'K';
+    return count.toString();
+  }
+
+  getTotalTokens(session: Session): number {
+    return (session.total_input_tokens || 0) + (session.total_output_tokens || 0);
+  }
+
+  getShortModel(model: string | null): string {
+    if (!model) return '-';
+    // Shorten common model names
+    return model
+      .replace('claude-', '')
+      .replace('-20250514', '')
+      .replace('-20250219', '')
+      .replace('-20241022', '')
+      .replace('-20240620', '')
+      .replace(/\d{8}$/, '');
   }
 
   getAgentColor(id: string): string {

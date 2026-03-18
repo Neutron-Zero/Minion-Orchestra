@@ -96,5 +96,42 @@
       </div>
       <div class="empty-insight" *ngIf="dailyData.length === 0">No data yet</div>
     </div>
+
+    <div class="insight-card token-card">
+      <div class="card-header">
+        <h4>Token Usage</h4>
+
+        <div class="header-stats">
+          <div class="header-stat">
+            <span class="header-stat-value">{{ formatTokenCount(tokenTotalInput) }}</span>
+            <span class="header-stat-label">Input</span>
+          </div>
+          <div class="header-stat">
+            <span class="header-stat-value">{{ formatTokenCount(tokenTotalOutput) }}</span>
+            <span class="header-stat-label">Output</span>
+          </div>
+          <div class="header-stat">
+            <span class="header-stat-value">{{ formatTokenCount(tokenTotalCacheRead) }}</span>
+            <span class="header-stat-label">Cache</span>
+          </div>
+        </div>
+
+        <div class="token-filters">
+          <select class="model-select" [ngModel]="selectedTokenModel" (ngModelChange)="setTokenModel($event)">
+            <option value="">All Models</option>
+            <option *ngFor="let m of tokenModels" [value]="m">{{ m }}</option>
+          </select>
+          <app-time-range-selector
+            [ranges]="tokenTimeRanges"
+            [selected]="selectedTokenRange"
+            (rangeChange)="setTokenTimeRange($event)">
+          </app-time-range-selector>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas #tokenCanvas></canvas>
+        <div class="empty-insight chart-empty" *ngIf="tokenDaily.length === 0">No token data yet</div>
+      </div>
+    </div>
   </div>
 </div>

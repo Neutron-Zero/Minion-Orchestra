@@ -203,6 +203,7 @@ async def _handle_subagent_start(agent, socket_id, event, sio):
         start_time=_safe_isoformat(subagent.start_time),
         pid=subagent.pid,
         metadata={"type": "subagent", "parent_pid": agent.pid, "active_duration": 0},
+        subagent_type=subagent_type or None,
     )
     await _emit_and_store_log(sio,event.timestamp, "info", f"Subagent started: {description}", event.agentId)
     await broadcast_agent_update(sio, agent_manager)
@@ -1086,6 +1087,10 @@ async def get_agent_transcript(
                 agent_id=agent_id, limit=limit, offset=offset, start_line=start_line,
             )
 
+        # Strip raw_entry from API responses (large, only needed server-side)
+        for e in entries:
+            e.pop("raw_entry", None)
+
         first_line = entries[0]["line_number"] if entries else None
         last_line = entries[-1]["line_number"] if entries else None
         return {
@@ -1106,16 +1111,26 @@ async def get_agent_detail(agent_id: str):
         # Try live agent first
         agent, _ = agent_manager.find_agent_by_id(agent_id)
         agent_data = None
+        db_session = None
+
+        # Always fetch DB session for token fields
+        sessions = await db.get_sessions()
+        for s in sessions:
+            if s.get("agent_id") == agent_id:
+                db_session = s
+                break
+
         if agent:
             agent_data = agent.model_dump(by_alias=True, mode="json")
-
-        # Get from DB if not live
-        if not agent_data:
-            sessions = await db.get_sessions()
-            for s in sessions:
-                if s.get("agent_id") == agent_id:
-                    agent_data = s
-                    break
+            # Merge DB token/model fields (in-memory model lacks them)
+            if db_session:
+                for key in ("total_input_tokens", "total_output_tokens",
+                            "total_cache_read_tokens", "total_cache_write_tokens",
+                            "model_name", "subagent_type"):
+                    if db_session.get(key) is not None:
+                        agent_data[key] = db_session[key]
+        else:
+            agent_data = db_session
 
         # Get logs for this agent
         logs = await db.get_logs(limit=500, agent_id=agent_id)
@@ -1165,5 +1180,32 @@ async def get_history(search: str | None = None, status: str | None = None,
         sessions = sessions[offset:offset + limit]
 
         return {"success": True, "sessions": sessions, "total": total}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Token Insights Endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/api/insights/tokens")
+async def get_token_insights(since: str | None = None, until: str | None = None, cwd: str | None = None):
+    try:
+        data = await db.get_token_insights(since=since, until=until, cwd=cwd)
+        return {"success": True, **data}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/api/insights/tokens/timeseries")
+async def get_token_timeseries(since: str | None = None, bucket: int = 1, bucket_seconds: int = 0, model: str | None = None):
+    try:
+        if not since:
+            from datetime import datetime, timedelta, timezone
+            since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        # Use bucket_seconds if provided, otherwise convert bucket (minutes) to seconds
+        secs = bucket_seconds if bucket_seconds > 0 else bucket * 60
+        data = await db.get_token_timeseries(since=since, bucket_seconds=secs, model=model)
+        return {"success": True, "timeseries": data}
     except Exception as e:
         return {"success": False, "error": str(e)}

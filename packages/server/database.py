@@ -129,6 +129,9 @@ async def init_db() -> aiosqlite.Connection:
     # Check if migration is needed (old integer PKs)
     await _migrate_to_uuid(_db)
 
+    # Add token tracking columns
+    await _migrate_add_token_columns(_db)
+
     await _db.executescript(_SCHEMA)
     await _db.commit()
 
@@ -284,6 +287,49 @@ async def _migrate_scan_state(db: aiosqlite.Connection) -> None:
     await db.execute("DROP TABLE _tss_old")
 
 
+async def _migrate_add_token_columns(db: aiosqlite.Connection) -> None:
+    """Add token tracking columns to transcript_entries and sessions."""
+    # Check if already migrated
+    cursor = await db.execute("PRAGMA table_info(transcript_entries)")
+    columns = await cursor.fetchall()
+    if any(c[1] == "model" for c in columns):
+        return  # already migrated
+
+    if not columns:
+        return  # table doesn't exist yet, schema will create it
+
+    print("  Token columns: adding to transcript_entries and sessions...")
+    await db.execute("ALTER TABLE transcript_entries ADD COLUMN raw_entry JSON")
+    await db.execute("ALTER TABLE transcript_entries ADD COLUMN model TEXT")
+    await db.execute("ALTER TABLE transcript_entries ADD COLUMN input_tokens INTEGER DEFAULT 0")
+    await db.execute("ALTER TABLE transcript_entries ADD COLUMN output_tokens INTEGER DEFAULT 0")
+    await db.execute("ALTER TABLE transcript_entries ADD COLUMN cache_read_tokens INTEGER DEFAULT 0")
+    await db.execute("ALTER TABLE transcript_entries ADD COLUMN cache_write_tokens INTEGER DEFAULT 0")
+
+    # Sessions token columns + subagent_type
+    cursor = await db.execute("PRAGMA table_info(sessions)")
+    sess_cols = await cursor.fetchall()
+    sess_col_names = {c[1] for c in sess_cols}
+    if "total_input_tokens" not in sess_col_names:
+        await db.execute("ALTER TABLE sessions ADD COLUMN total_input_tokens INTEGER DEFAULT 0")
+        await db.execute("ALTER TABLE sessions ADD COLUMN total_output_tokens INTEGER DEFAULT 0")
+        await db.execute("ALTER TABLE sessions ADD COLUMN total_cache_read_tokens INTEGER DEFAULT 0")
+        await db.execute("ALTER TABLE sessions ADD COLUMN total_cache_write_tokens INTEGER DEFAULT 0")
+        await db.execute("ALTER TABLE sessions ADD COLUMN model_name TEXT")
+    if "subagent_type" not in sess_col_names:
+        await db.execute("ALTER TABLE sessions ADD COLUMN subagent_type TEXT")
+        # Backfill subagent_type from agent_name pattern "{type}: {description}"
+        await db.execute("""
+            UPDATE sessions SET subagent_type = SUBSTR(agent_name, 1, INSTR(agent_name, ': ') - 1)
+            WHERE agent_name LIKE '%: %' AND subagent_type IS NULL
+              AND agent_id IN (SELECT agent_id FROM sessions WHERE metadata LIKE '%"type": "subagent"%' OR metadata LIKE '%"type":"subagent"%')
+        """)
+
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_transcript_model ON transcript_entries(model)")
+    await db.commit()
+    print("  Token columns: migration complete.")
+
+
 async def close_db() -> None:
     """Close the database connection and clear the singleton."""
     global _db
@@ -380,22 +426,24 @@ async def store_session(
     start_time: str | None = None,
     pid: int | None = None,
     metadata: Any = None,
+    subagent_type: str | None = None,
 ) -> None:
     """Upsert a session row (insert or update on conflict by agent_id)."""
     db = _get_db()
     await db.execute(
         """
-        INSERT INTO sessions (id, agent_id, agent_name, status, working_directory, start_time, pid, metadata)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO sessions (id, agent_id, agent_name, status, working_directory, start_time, pid, metadata, subagent_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(agent_id) DO UPDATE SET
             agent_name       = COALESCE(excluded.agent_name, sessions.agent_name),
             status           = COALESCE(excluded.status, sessions.status),
             working_directory = COALESCE(excluded.working_directory, sessions.working_directory),
             start_time       = COALESCE(excluded.start_time, sessions.start_time),
             pid              = COALESCE(excluded.pid, sessions.pid),
-            metadata         = COALESCE(excluded.metadata, sessions.metadata)
+            metadata         = COALESCE(excluded.metadata, sessions.metadata),
+            subagent_type    = COALESCE(excluded.subagent_type, sessions.subagent_type)
         """,
-        (_uuid(), agent_id, agent_name, status, working_directory, start_time, pid, _json_dumps(metadata)),
+        (_uuid(), agent_id, agent_name, status, working_directory, start_time, pid, _json_dumps(metadata), subagent_type),
     )
     await db.commit()
 
@@ -576,14 +624,17 @@ async def store_transcript_entries_batch(entries: list[dict[str, Any]]) -> int:
     await db.executemany(
         """
         INSERT INTO transcript_entries
-            (id, agent_id, session_id, entry_type, content, tool_name, tool_input, tool_use_id, timestamp, line_number, metadata)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, agent_id, session_id, entry_type, content, tool_name, tool_input, tool_use_id, timestamp, line_number, metadata,
+             raw_entry, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             (
                 e.get("id") or _uuid(), e["agent_id"], e["session_id"], e["entry_type"], e.get("content"),
                 e.get("tool_name"), e.get("tool_input"), e.get("tool_use_id"),
                 e["timestamp"], e["line_number"], _json_dumps(e.get("metadata")),
+                e.get("raw_entry"), e.get("model"), e.get("input_tokens", 0),
+                e.get("output_tokens", 0), e.get("cache_read_tokens", 0), e.get("cache_write_tokens", 0),
             )
             for e in entries
         ],
@@ -720,3 +771,151 @@ async def upsert_transcript_scan_state(
         (_uuid(), agent_id, session_id, jsonl_path, last_line_number, last_file_size),
     )
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Token tracking operations
+# ---------------------------------------------------------------------------
+
+
+async def update_session_tokens(agent_id: str) -> None:
+    """Aggregate token counts from transcript_entries into the session row."""
+    db = _get_db()
+    await db.execute(
+        """
+        UPDATE sessions SET
+            total_input_tokens = COALESCE((SELECT SUM(input_tokens) FROM transcript_entries WHERE agent_id = ?), 0),
+            total_output_tokens = COALESCE((SELECT SUM(output_tokens) FROM transcript_entries WHERE agent_id = ?), 0),
+            total_cache_read_tokens = COALESCE((SELECT SUM(cache_read_tokens) FROM transcript_entries WHERE agent_id = ?), 0),
+            total_cache_write_tokens = COALESCE((SELECT SUM(cache_write_tokens) FROM transcript_entries WHERE agent_id = ?), 0),
+            model_name = (SELECT model FROM transcript_entries WHERE agent_id = ? AND model IS NOT NULL ORDER BY line_number DESC LIMIT 1)
+        WHERE agent_id = ?
+        """,
+        (agent_id, agent_id, agent_id, agent_id, agent_id, agent_id),
+    )
+    await db.commit()
+
+
+async def get_all_scan_states() -> list[dict[str, Any]]:
+    """Return all transcript scan states (for backfill)."""
+    db = _get_db()
+    cursor = await db.execute("SELECT * FROM transcript_scan_state")
+    rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def get_entries_needing_backfill(agent_id: str) -> list[dict[str, Any]]:
+    """Return transcript entries that have no raw_entry stored."""
+    db = _get_db()
+    cursor = await db.execute(
+        "SELECT id, session_id, line_number, entry_type FROM transcript_entries WHERE agent_id = ? AND raw_entry IS NULL",
+        (agent_id,),
+    )
+    rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def batch_update_transcript_tokens(updates: list[tuple]) -> None:
+    """Batch update raw_entry, model, and token fields on transcript_entries.
+
+    Each tuple: (raw_entry, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, id)
+    """
+    if not updates:
+        return
+    db = _get_db()
+    await db.executemany(
+        """
+        UPDATE transcript_entries SET
+            raw_entry = ?, model = ?, input_tokens = ?, output_tokens = ?,
+            cache_read_tokens = ?, cache_write_tokens = ?
+        WHERE id = ?
+        """,
+        updates,
+    )
+    await db.commit()
+
+
+async def get_token_insights(since: str | None = None, until: str | None = None, cwd: str | None = None) -> dict[str, Any]:
+    """Return token usage breakdowns: per-session, daily aggregates, by-model."""
+    db = _get_db()
+
+    clauses: list[str] = ["total_input_tokens > 0"]
+    params: list[Any] = []
+    if since:
+        clauses.append("start_time >= ?")
+        params.append(since)
+    if until:
+        clauses.append("start_time <= ?")
+        params.append(until)
+    if cwd:
+        clauses.append("working_directory LIKE ?")
+        params.append(f"%{cwd}%")
+
+    where = " WHERE " + " AND ".join(clauses)
+
+    # Per-session breakdown
+    cursor = await db.execute(
+        f"SELECT agent_id, agent_name, model_name, start_time, total_input_tokens, total_output_tokens, total_cache_read_tokens, total_cache_write_tokens FROM sessions{where} ORDER BY start_time DESC LIMIT 200",
+        params,
+    )
+    sessions = [dict(r) for r in await cursor.fetchall()]
+
+    # Daily aggregates
+    cursor = await db.execute(
+        f"SELECT DATE(start_time) as date, SUM(total_input_tokens) as input_tokens, SUM(total_output_tokens) as output_tokens, SUM(total_cache_read_tokens) as cache_read_tokens, SUM(total_cache_write_tokens) as cache_write_tokens FROM sessions{where} GROUP BY DATE(start_time) ORDER BY date",
+        params,
+    )
+    daily = [dict(r) for r in await cursor.fetchall()]
+
+    # By-model aggregates
+    cursor = await db.execute(
+        f"SELECT model_name, COUNT(*) as session_count, SUM(total_input_tokens) as input_tokens, SUM(total_output_tokens) as output_tokens, SUM(total_cache_read_tokens) as cache_read_tokens, SUM(total_cache_write_tokens) as cache_write_tokens FROM sessions{where} AND model_name IS NOT NULL GROUP BY model_name ORDER BY output_tokens DESC",
+        params,
+    )
+    by_model = [dict(r) for r in await cursor.fetchall()]
+
+    return {"sessions": sessions, "daily": daily, "by_model": by_model}
+
+
+async def get_token_timeseries(since: str, bucket_seconds: int = 60, model: str | None = None) -> list[dict[str, Any]]:
+    """Return token usage bucketed by time interval from transcript_entries."""
+    db = _get_db()
+
+    clauses = ["timestamp >= ?", "(input_tokens > 0 OR output_tokens > 0 OR cache_read_tokens > 0)"]
+    params: list[Any] = [since]
+
+    if model:
+        clauses.append("model = ?")
+        params.append(model)
+
+    where = " WHERE " + " AND ".join(clauses)
+
+    # SQLite time bucketing: truncate timestamp to bucket
+    if bucket_seconds >= 86400:
+        bucket_expr = "SUBSTR(timestamp, 1, 10)"  # daily
+    elif bucket_seconds >= 3600:
+        bucket_expr = "SUBSTR(timestamp, 1, 13)"  # hourly
+    elif bucket_seconds >= 600:
+        # 10-min buckets: YYYY-MM-DDTHH:M0
+        bucket_expr = "SUBSTR(timestamp, 1, 15) || '0'"
+    elif bucket_seconds >= 60:
+        bucket_expr = "SUBSTR(timestamp, 1, 16)"  # per-minute
+    elif bucket_seconds >= 10:
+        # 10-sec buckets: YYYY-MM-DDTHH:MM:S0
+        bucket_expr = "SUBSTR(timestamp, 1, 18) || '0'"
+    else:
+        bucket_expr = "SUBSTR(timestamp, 1, 19)"  # per-second
+
+    query = f"""
+        SELECT {bucket_expr} as bucket,
+               SUM(input_tokens) as input_tokens,
+               SUM(output_tokens) as output_tokens,
+               SUM(cache_read_tokens) as cache_read_tokens,
+               SUM(cache_write_tokens) as cache_write_tokens
+        FROM transcript_entries{where}
+        GROUP BY bucket
+        ORDER BY bucket
+    """
+    cursor = await db.execute(query, params)
+    rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
