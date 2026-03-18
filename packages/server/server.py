@@ -33,7 +33,7 @@ cleanup_service = CleanupService(agent_manager, task_queue, sio)
 session_watcher = SessionWatcher(agent_manager, sio)
 transcript_scanner = TranscriptScanner(sio)
 
-VERSION = "1.9.0"
+VERSION = "1.9.1"
 
 @asynccontextmanager
 async def lifespan(app):
@@ -114,6 +114,7 @@ async def lifespan(app):
     cleanup_service.start()
     session_watcher.start()
     transcript_scanner.start_polling()
+    await transcript_scanner.discover_jsonl_sessions()
     await transcript_scanner.backfill_images()
     await transcript_scanner.backfill_tokens()
     yield

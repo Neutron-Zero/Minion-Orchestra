@@ -816,6 +816,7 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.tokenByModel = res.by_model || [];
         this.tokenTopModel = this.tokenByModel.length > 0 ? (this.tokenByModel[0].model_name || '-') : '-';
 
+        let rawDaily: { date: string; input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number }[];
         if (this.selectedTokenModel) {
           const sessions = (res.sessions || []).filter((s: any) => s.model_name === this.selectedTokenModel);
           const dayMap = new Map<string, { input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number }>();
@@ -829,12 +830,15 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
             entry.cache_write_tokens += s.total_cache_write_tokens || 0;
             dayMap.set(date, entry);
           }
-          this.tokenDaily = Array.from(dayMap.entries())
+          rawDaily = Array.from(dayMap.entries())
             .map(([date, d]) => ({ date, ...d }))
             .sort((a, b) => a.date.localeCompare(b.date));
         } else {
-          this.tokenDaily = res.daily || [];
+          rawDaily = res.daily || [];
         }
+
+        // Fill in missing dates so the chart doesn't skip gaps
+        this.tokenDaily = this.fillDailyGaps(rawDaily, this.selectedTokenRange);
 
         this.updateTokenStats();
         this.cdr.markForCheck();
@@ -886,6 +890,36 @@ export class InsightsComponent implements OnInit, AfterViewInit, OnDestroy {
         this._tokenVisibleTicks.set(idx, ticks[t]);
       }
     }
+  }
+
+  private fillDailyGaps(
+    data: { date: string; input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number }[],
+    rangeMinutes: number
+  ): typeof data {
+    if (data.length === 0) return data;
+
+    // Build lookup of existing dates
+    const lookup = new Map<string, typeof data[0]>();
+    for (const d of data) lookup.set(d.date, d);
+
+    // Generate every date from range start to today
+    const now = new Date();
+    const start = rangeMinutes > 0
+      ? new Date(Date.now() - rangeMinutes * 60 * 1000)
+      : new Date(data[0].date + 'T00:00:00');
+    const filled: typeof data = [];
+
+    const cur = new Date(start);
+    cur.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(0, 0, 0, 0);
+
+    while (cur <= end) {
+      const key = cur.toISOString().slice(0, 10);
+      filled.push(lookup.get(key) || { date: key, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 });
+      cur.setDate(cur.getDate() + 1);
+    }
+    return filled;
   }
 
   private updateTokenStats(): void {

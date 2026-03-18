@@ -25,6 +25,7 @@ from database import (
     get_entries_needing_backfill,
     get_transcript_scan_state,
     get_unchecked_image_entries,
+    store_session,
     store_transcript_entries_batch,
     update_session_tokens,
     update_transcript_entry_metadata,
@@ -190,6 +191,78 @@ class TranscriptScanner:
 
         if total_updated:
             print(f"  Token backfill: updated {total_updated} entries across {agents_updated} agent(s)")
+
+    async def discover_jsonl_sessions(self):
+        """Walk ~/.claude/projects/*/*.jsonl and scan any files not already in the DB."""
+        if not os.path.isdir(CLAUDE_PROJECTS_DIR):
+            return
+
+        # Get all already-known scan states keyed by jsonl_path
+        known_states = await get_all_scan_states()
+        known_paths = {s.get("jsonl_path", "") for s in known_states}
+
+        discovered = 0
+        for project_dir in os.listdir(CLAUDE_PROJECTS_DIR):
+            project_path = os.path.join(CLAUDE_PROJECTS_DIR, project_dir)
+            if not os.path.isdir(project_path):
+                continue
+            # Decode working directory from folder name: "-Users-..." -> "/Users/..."
+            working_directory = project_dir.replace("-", "/", 1) if project_dir.startswith("-") else project_dir
+            # All dashes after the leading one are also path separators
+            working_directory = "/" + project_dir[1:].replace("-", "/") if project_dir.startswith("-") else project_dir
+
+            for fname in os.listdir(project_path):
+                if not fname.endswith(".jsonl"):
+                    continue
+                jsonl_path = os.path.join(project_path, fname)
+                if jsonl_path in known_paths:
+                    continue
+
+                session_id = fname.replace(".jsonl", "")
+                # Use session_id as agent_id for discovered sessions
+                agent_id = session_id
+
+                # Extract metadata from first few lines
+                agent_name = "Claude Agent"
+                start_time = None
+                cwd = None
+                try:
+                    with open(jsonl_path, "r", encoding="utf-8", errors="replace") as f:
+                        for i, line in enumerate(f):
+                            if i > 10:
+                                break
+                            try:
+                                obj = json.loads(line)
+                                if obj.get("cwd") and not cwd:
+                                    cwd = obj["cwd"]
+                                if obj.get("timestamp") and not start_time:
+                                    start_time = obj["timestamp"]
+                            except (json.JSONDecodeError, TypeError):
+                                continue
+                except (OSError, IOError):
+                    continue
+
+                effective_cwd = cwd or working_directory
+
+                # Create a session record
+                await store_session(
+                    agent_id=agent_id,
+                    agent_name=agent_name,
+                    status="completed",
+                    working_directory=effective_cwd,
+                    start_time=start_time,
+                )
+
+                # Scan the full file
+                try:
+                    count = await self.scan_agent(agent_id, session_id, effective_cwd)
+                    if count > 0:
+                        discovered += 1
+                except Exception as e:
+                    print(f"  Discovery scan error for {session_id}: {e}")
+
+        if discovered:
+            print(f"  Discovered and scanned {discovered} JSONL session(s) from disk")
 
     async def _poll_loop(self):
         """Periodically scan all tracked agents for new transcript entries."""
