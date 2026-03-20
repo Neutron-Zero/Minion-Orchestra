@@ -28,14 +28,23 @@ Activity heatmap (7d/15d/30d), daily activity chart, real-time activity pulse, a
 
 ![Insights](packages/client/src/assets/screenshots/mo-insights.png)
 
-## Supported Agents
+## Supported Agent Features
 
-| Agent | Hook Events | Subagents | Scope | Setup |
-|-------|-------------|-----------|-------|-------|
-| Claude Code | 17 | Yes | Global | Automatic on install |
-| GitHub Copilot CLI | 6 | No | Per-repo | [Manual per repo](docs/setup-copilot-cli.md) |
+| Agent              | Hook Events | Subagent Tracking | Token Tracking | Transcripts | Scope    | Setup                                        |
+| ------------------ | ----------- | ----------------- | -------------- | ----------- | -------- | -------------------------------------------- |
+| Claude Code        | 22          | Yes               | Yes            | Full        | Global   | Automatic on install                         |
+| GitHub Copilot CLI | 6           | No                | No             | Partial     | Per-repo | [Manual per repo](docs/setup-copilot-cli.md) |
 
 See detailed setup instructions: [Claude Code](docs/setup-claude-code.md) | [GitHub Copilot CLI](docs/setup-copilot-cli.md)
+
+### GitHub Copilot CLI limitations
+
+GitHub Copilot CLI's hook and event system is still maturing. These limitations reflect what is currently exposed to external tools and may improve as GitHub expands the platform.
+
+- **No token tracking** — Copilot CLI does not expose token usage data in its hook events or local session files.
+- **No subagent tracking** — Hook events do not include subagent lifecycle data, so parent-child relationships between sessions cannot be tracked.
+- **Partial transcripts** — Messages and tool calls are captured, but model reasoning is encrypted in the local session data and not accessible to external tools.
+- **Per-repo setup** — Hooks must be configured in each repository rather than globally.
 
 ## Claude Code Quick Start
 
@@ -56,7 +65,7 @@ npm start
 Then from the root of each repo you want to monitor:
 
 ```bash
-bash {path-to-minion-orchestra}/app/hooks/setup-copilot.sh
+bash {path-to-minion-orchestra-app}/setup-copilot.sh
 ```
 
 ---

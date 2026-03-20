@@ -14,12 +14,10 @@ Minion Orchestra monitors GitHub Copilot CLI sessions via the [Copilot hooks sys
 From the root of any repo you want to monitor:
 
 ```bash
-bash {path-to-minion-orchestra}/app/hooks/setup-copilot.sh
+bash {path-to-minion-orchestra-app}/setup-copilot.sh
 ```
 
-This creates `.github/hooks/minion-orchestra.json` in the current repo, pointing each Copilot hook event to `copilot_hook.py` in the Minion Orchestra project.
-
-After setup, any `gh copilot` session in that repo sends events to Minion Orchestra automatically.
+This copies `copilot_hook.py` to `~/.minion-orchestra/hooks/` and creates `.github/hooks/minion-orchestra.json` in the current repo pointing to it. After setup, any `gh copilot` session in that repo sends events to Minion Orchestra automatically.
 
 ## Hook Events (6)
 

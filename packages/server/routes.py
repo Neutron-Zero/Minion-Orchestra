@@ -342,6 +342,42 @@ async def _handle_worktree_remove(agent, socket_id, event, sio):
     await _emit_and_store_log(sio,event.timestamp, "info", f"Worktree removed: {wt_path}", event.agentId)
 
 
+async def _handle_stop_failure(agent, socket_id, event, sio):
+    data = event.data or {}
+    error_type = data.get("error_type", "unknown")
+    agent.status = "failed"
+    agent.status_changed_at = datetime.now(timezone.utc)
+    if task_queue.get_queue()["inProgress"] > 0:
+        task_queue.decrement("inProgress")
+        task_queue.increment("failed")
+    await _emit_and_store_log(sio, event.timestamp, "error", f"Turn failed: {error_type}", event.agentId)
+
+
+async def _handle_post_compact(agent, socket_id, event, sio):
+    await _emit_and_store_log(sio, event.timestamp, "debug", "Context compaction complete", event.agentId)
+
+
+async def _handle_instructions_loaded(agent, socket_id, event, sio):
+    data = event.data or {}
+    fp = data.get("file_path", "")
+    short = fp.split("/")[-1] if "/" in fp else fp
+    await _emit_and_store_log(sio, event.timestamp, "debug", f"Instructions loaded: {short}" if short else "Instructions loaded", event.agentId)
+
+
+async def _handle_elicitation(agent, socket_id, event, sio):
+    data = event.data or {}
+    prompt = data.get("prompt", "")
+    truncated = prompt[:100] + ("..." if len(prompt) > 100 else "")
+    agent.status = "awaiting-input"
+    await _emit_and_store_log(sio, event.timestamp, "info", f"MCP elicitation: {truncated}" if truncated else "MCP server requesting user input", event.agentId)
+
+
+async def _handle_elicitation_result(agent, socket_id, event, sio):
+    data = event.data or {}
+    action = data.get("action", "unknown")
+    await _emit_and_store_log(sio, event.timestamp, "info", f"Elicitation response: {action}", event.agentId)
+
+
 async def _handle_default(agent, socket_id, event, sio):
     data_str = json.dumps(event.data or {}, default=str)[:100]
     await _emit_and_store_log(sio,event.timestamp, "debug", f"{event.eventType}: {data_str}", event.agentId)
@@ -356,7 +392,9 @@ EVENT_HANDLERS = {
     "PreCompact": _handle_pre_compact, "Notification": _handle_notification,
     "TeammateIdle": _handle_teammate_idle, "TaskCompleted": _handle_task_completed,
     "ConfigChange": _handle_config_change, "WorktreeCreate": _handle_worktree_create,
-    "WorktreeRemove": _handle_worktree_remove,
+    "WorktreeRemove": _handle_worktree_remove, "StopFailure": _handle_stop_failure,
+    "PostCompact": _handle_post_compact, "InstructionsLoaded": _handle_instructions_loaded,
+    "Elicitation": _handle_elicitation, "ElicitationResult": _handle_elicitation_result,
 }
 
 
@@ -417,6 +455,14 @@ async def hook_endpoint(event: HookEvent, request: Request):
         await broadcast_agent_update(sio, agent_manager)
         await broadcast_task_update(sio, task_queue)
 
+        # Increment terminal event counter
+        event_counts = getattr(request.app.state, "event_counts", None)
+        if event_counts is not None:
+            event_counts[event.eventType] = event_counts.get(event.eventType, 0) + 1
+            event_flash = getattr(request.app.state, "event_flash", None)
+            if event_flash is not None:
+                event_flash[event.eventType] = 0  # reset fade counter
+
         # Store event in database
         prompt_msg = None
         if event.eventType == "UserPromptSubmit":
@@ -452,7 +498,7 @@ async def hook_endpoint(event: HookEvent, request: Request):
         )
 
         # Scan transcript JSONL for new entries
-        source_tool = (event.data or {}).get("source_tool", "claude-code")
+        source_tool = (event.data or {}).get("source_tool") or (agent.session_data or {}).get("source_tool") or "claude-code"
         session_id = (event.data or {}).get("session_id") or (agent.session_data or {}).get("sessionId")
         if session_id:
             if agent.session_data is None:

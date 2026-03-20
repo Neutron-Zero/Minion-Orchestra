@@ -62,6 +62,7 @@ export class AgentDetailComponent implements OnInit, OnDestroy {
 
   hitlInput = '';
   subagents: Agent[] = [];
+  parentAgent: { id: string; name: string; status: string } | null = null;
   private scrollToTimestamp: string | null = null;
   activeSubagents: Agent[] = [];
   inactiveSubagents: Agent[] = [];
@@ -99,6 +100,7 @@ export class AgentDetailComponent implements OnInit, OnDestroy {
     this.eventSub?.unsubscribe();
     this.agentSub?.unsubscribe();
     this.subagentSub?.unsubscribe();
+    this.parentSub?.unsubscribe();
     if (this.durationTimer) {
       clearInterval(this.durationTimer);
     }
@@ -126,6 +128,7 @@ export class AgentDetailComponent implements OnInit, OnDestroy {
           }
           this.updateDuration();
           this.startDurationTimer();
+          this.resolveParentAgent();
           this.subscribeToAgentUpdates();
           this.subscribeToSubagents();
           this.subscribeToEvents();
@@ -142,6 +145,43 @@ export class AgentDetailComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       }
     });
+  }
+
+  private parentSub?: Subscription;
+
+  private resolveParentAgent(): void {
+    this.parentAgent = null;
+    this.parentSub?.unsubscribe();
+    const meta = this.agent?.metadata;
+    const parentPid = meta?.parent_pid || this.agent?.parentPid;
+    if (!parentPid) return;
+
+    // Subscribe to live agents so parent status stays current
+    this.parentSub = this.agentService.getAgents().subscribe(agents => {
+      const liveParent = agents.find(a => a.pid === parentPid && a.id !== this.agentId);
+      if (liveParent) {
+        this.parentAgent = { id: liveParent.id, name: liveParent.name || liveParent.id, status: liveParent.status };
+        this.cdr.markForCheck();
+      }
+    });
+
+    // Also check DB for parents no longer in memory
+    this.http.get<any>(`${environment.serverUrl}/api/history`, {
+      params: { limit: '500' }
+    }).subscribe(res => {
+      if (!res.success || this.parentAgent) return;
+      const parent = res.sessions.find((s: any) => s.pid === parentPid && s.agent_id !== this.agentId);
+      if (parent) {
+        this.parentAgent = { id: parent.agent_id, name: parent.agent_name || parent.agent_id, status: parent.status || 'unknown' };
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  navigateToParent(): void {
+    if (this.parentAgent) {
+      this.router.navigate(['/agent', this.parentAgent.id]);
+    }
   }
 
   private subscribeToAgentUpdates(): void {

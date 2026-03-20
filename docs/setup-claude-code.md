@@ -24,7 +24,7 @@ npm run uninstall
 
 ## How It Works
 
-The setup script (`setup.py`) adds entries to `~/.claude/settings.json` pointing each hook event to `hooks/claude_hook.py`. When Claude Code fires a hook, the script sends a JSON payload to the Minion Orchestra server via HTTP POST.
+The setup script (`setup.py`) copies `hooks/claude_hook.py` to `~/.minion-orchestra/hooks/` and adds entries to `~/.claude/settings.json` pointing each hook event there. When Claude Code fires a hook, the script sends a JSON payload to the Minion Orchestra server via HTTP POST.
 
 Hooks are **global** -- once configured, every Claude Code session on your machine is monitored regardless of which project you're working in.
 

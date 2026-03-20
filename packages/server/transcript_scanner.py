@@ -23,6 +23,7 @@ from database import (
     batch_update_transcript_tokens,
     get_all_scan_states,
     get_entries_needing_backfill,
+    get_existing_line_numbers,
     get_transcript_scan_state,
     get_unchecked_image_entries,
     store_session,
@@ -105,8 +106,7 @@ class TranscriptScanner:
                 meta["image_data"] = ""
                 meta["image_type"] = ""
             await update_transcript_entry_metadata(entry["id"], meta)
-        if captured:
-            print(f"  Image backfill: captured {captured} image(s) from {len(entries)} entries")
+        return captured
 
     async def backfill_tokens(self):
         """One-time backfill: read JSONL files for entries missing raw_entry/token data."""
@@ -189,41 +189,176 @@ class TranscriptScanner:
                 total_updated += len(updates)
                 agents_updated += 1
 
-        if total_updated:
-            print(f"  Token backfill: updated {total_updated} entries across {agents_updated} agent(s)")
+        return total_updated
 
-    async def discover_jsonl_sessions(self):
-        """Walk ~/.claude/projects/*/*.jsonl and scan any files not already in the DB."""
-        if not os.path.isdir(CLAUDE_PROJECTS_DIR):
+    async def backfill_progress(self):
+        """One-time backfill: re-read JSONL files to import progress entries (subagent transcripts)
+        that were previously skipped. Only processes lines not already in the DB."""
+        scan_states = await get_all_scan_states()
+        if not scan_states:
             return
 
-        # Get all already-known scan states keyed by jsonl_path
+        total_inserted = 0
+        agents_processed = 0
+
+        for state in scan_states:
+            agent_id = state["agent_id"]
+            session_id = state.get("session_id", agent_id)
+            jsonl_path = state.get("jsonl_path", "")
+
+            if not jsonl_path or not os.path.isfile(jsonl_path):
+                continue
+
+            # Get line numbers already stored for this agent AND any subagents
+            # (subagent entries use the parent's session_id but their own agent_id)
+            existing_lines = await get_existing_line_numbers(agent_id)
+
+            try:
+                with open(jsonl_path, "r", encoding="utf-8", errors="replace") as f:
+                    lines = f.readlines()
+            except (OSError, IOError):
+                continue
+
+            new_entries: list[dict[str, Any]] = []
+            # Track which subagent line_numbers we've already seen
+            subagent_existing: dict[str, set[int]] = {}
+
+            for i, line in enumerate(lines, 1):
+                line = line.strip()
+                if not line:
+                    continue
+
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                entry_type = data.get("type")
+
+                if entry_type == "progress":
+                    inner = data.get("data", {})
+                    progress_type = inner.get("type", "")
+                    subagent_id = inner.get("agentId", agent_id) if progress_type == "agent_progress" else agent_id
+
+                    # Check if this line is already stored for the target agent
+                    if subagent_id == agent_id:
+                        if i in existing_lines:
+                            continue
+                    else:
+                        # Lazy-load subagent's existing lines
+                        if subagent_id not in subagent_existing:
+                            subagent_existing[subagent_id] = await get_existing_line_numbers(subagent_id)
+                        if i in subagent_existing[subagent_id]:
+                            continue
+
+                    parsed = self._parse_progress(data, agent_id, session_id, i, data.get("timestamp", ""))
+                    for e in parsed:
+                        e["raw_entry"] = line
+                    new_entries.extend(parsed)
+
+                elif entry_type not in ("user", "assistant"):
+                    # Other skipped types (system, file-history-snapshot, etc.)
+                    if i in existing_lines:
+                        continue
+                    entry = self._make_entry(
+                        agent_id, session_id, entry_type or "unknown",
+                        i, data.get("timestamp", ""),
+                    )
+                    entry["raw_entry"] = line
+                    new_entries.append(entry)
+
+            if new_entries:
+                await store_transcript_entries_batch(new_entries)
+                total_inserted += len(new_entries)
+                agents_processed += 1
+
+                # Update session tokens for any subagents that got new entries
+                subagent_ids = {e["agent_id"] for e in new_entries if e.get("input_tokens", 0) > 0}
+                for sid in subagent_ids:
+                    await update_session_tokens(sid)
+
+        return total_inserted
+
+    async def discover_jsonl_sessions(self):
+        """Walk ~/.claude/projects/ and ~/.copilot/session-state/ to scan any JSONL files not already in the DB."""
         known_states = await get_all_scan_states()
         known_paths = {s.get("jsonl_path", "") for s in known_states}
+        # Also build session_id lookup so we can match copilot sessions already in DB
+        known_session_ids = {s.get("session_id", "") for s in known_states}
 
         discovered = 0
-        for project_dir in os.listdir(CLAUDE_PROJECTS_DIR):
-            project_path = os.path.join(CLAUDE_PROJECTS_DIR, project_dir)
-            if not os.path.isdir(project_path):
-                continue
-            # Decode working directory from folder name: "-Users-..." -> "/Users/..."
-            working_directory = project_dir.replace("-", "/", 1) if project_dir.startswith("-") else project_dir
-            # All dashes after the leading one are also path separators
-            working_directory = "/" + project_dir[1:].replace("-", "/") if project_dir.startswith("-") else project_dir
 
-            for fname in os.listdir(project_path):
-                if not fname.endswith(".jsonl"):
+        # --- Claude Code sessions: ~/.claude/projects/*/*.jsonl ---
+        if os.path.isdir(CLAUDE_PROJECTS_DIR):
+            for project_dir in os.listdir(CLAUDE_PROJECTS_DIR):
+                project_path = os.path.join(CLAUDE_PROJECTS_DIR, project_dir)
+                if not os.path.isdir(project_path):
                     continue
-                jsonl_path = os.path.join(project_path, fname)
+
+                for fname in os.listdir(project_path):
+                    if not fname.endswith(".jsonl"):
+                        continue
+                    jsonl_path = os.path.join(project_path, fname)
+                    if jsonl_path in known_paths:
+                        continue
+
+                    session_id = fname.replace(".jsonl", "")
+                    agent_id = session_id
+
+                    agent_name = "Claude Agent"
+                    start_time = None
+                    cwd = None
+                    try:
+                        with open(jsonl_path, "r", encoding="utf-8", errors="replace") as f:
+                            for i, line in enumerate(f):
+                                if i > 10:
+                                    break
+                                try:
+                                    obj = json.loads(line)
+                                    if obj.get("cwd") and not cwd:
+                                        cwd = obj["cwd"]
+                                    if obj.get("timestamp") and not start_time:
+                                        start_time = obj["timestamp"]
+                                except (json.JSONDecodeError, TypeError):
+                                    continue
+                    except (OSError, IOError):
+                        continue
+
+                    # Decode working directory from folder name as fallback
+                    folder_cwd = ("/" + project_dir[1:].replace("-", "/")) if project_dir.startswith("-") else project_dir
+                    effective_cwd = cwd or folder_cwd
+
+                    await store_session(
+                        agent_id=agent_id, agent_name=agent_name,
+                        status="completed", working_directory=effective_cwd,
+                        start_time=start_time,
+                    )
+                    try:
+                        count = await self.scan_agent(agent_id, session_id, effective_cwd)
+                        if count > 0:
+                            discovered += 1
+                    except Exception as e:
+                        print(f"  Discovery scan error for {session_id}: {e}")
+
+        # --- Copilot CLI sessions: ~/.copilot/session-state/*/events.jsonl ---
+        if os.path.isdir(COPILOT_SESSION_DIR):
+            for session_dir in os.listdir(COPILOT_SESSION_DIR):
+                session_path = os.path.join(COPILOT_SESSION_DIR, session_dir)
+                if not os.path.isdir(session_path):
+                    continue
+                jsonl_path = os.path.join(session_path, "events.jsonl")
+                if not os.path.isfile(jsonl_path):
+                    continue
                 if jsonl_path in known_paths:
                     continue
 
-                session_id = fname.replace(".jsonl", "")
-                # Use session_id as agent_id for discovered sessions
-                agent_id = session_id
+                session_id = session_dir  # UUID folder name
+                if session_id in known_session_ids:
+                    continue
 
-                # Extract metadata from first few lines
-                agent_name = "Claude Agent"
+                # Use "copilot-<first8>" as agent_id (matches session watcher pattern)
+                agent_id = f"copilot-disc-{session_id[:8]}"
+
                 start_time = None
                 cwd = None
                 try:
@@ -233,33 +368,32 @@ class TranscriptScanner:
                                 break
                             try:
                                 obj = json.loads(line)
-                                if obj.get("cwd") and not cwd:
-                                    cwd = obj["cwd"]
                                 if obj.get("timestamp") and not start_time:
                                     start_time = obj["timestamp"]
+                                # Copilot stores cwd in session.start -> data.context
+                                if obj.get("type") == "session.start":
+                                    ctx = (obj.get("data") or {}).get("context", {})
+                                    if isinstance(ctx, dict):
+                                        cwd = ctx.get("cwd") or ctx.get("workspacePath")
                             except (json.JSONDecodeError, TypeError):
                                 continue
                 except (OSError, IOError):
                     continue
 
-                effective_cwd = cwd or working_directory
+                effective_cwd = cwd or ""
+                agent_name = f"Copilot: {os.path.basename(effective_cwd)}" if effective_cwd else "Copilot Agent"
 
-                # Create a session record
                 await store_session(
-                    agent_id=agent_id,
-                    agent_name=agent_name,
-                    status="completed",
-                    working_directory=effective_cwd,
+                    agent_id=agent_id, agent_name=agent_name,
+                    status="completed", working_directory=effective_cwd,
                     start_time=start_time,
                 )
-
-                # Scan the full file
                 try:
-                    count = await self.scan_agent(agent_id, session_id, effective_cwd)
+                    count = await self.scan_agent(agent_id, session_id, effective_cwd, source_tool="copilot-cli")
                     if count > 0:
                         discovered += 1
                 except Exception as e:
-                    print(f"  Discovery scan error for {session_id}: {e}")
+                    print(f"  Discovery scan error for copilot {session_id}: {e}")
 
         if discovered:
             print(f"  Discovered and scanned {discovered} JSONL session(s) from disk")
@@ -409,9 +543,16 @@ class TranscriptScanner:
             entries = TranscriptScanner._parse_user(data, agent_id, session_id, line_number, timestamp)
         elif entry_type == "assistant":
             entries = TranscriptScanner._parse_assistant(data, agent_id, session_id, line_number, timestamp)
+        elif entry_type == "progress":
+            entries = TranscriptScanner._parse_progress(data, agent_id, session_id, line_number, timestamp)
         else:
-            # Skip: progress, system, file-history-snapshot, queue-operation, summary, etc.
-            return []
+            # Store every other line type (system, file-history-snapshot,
+            # queue-operation, summary, etc.) as a raw entry so we have a complete
+            # copy of the JSONL in the database.
+            entries = [TranscriptScanner._make_entry(
+                agent_id, session_id, entry_type or "unknown",
+                line_number, timestamp,
+            )]
 
         # Stamp raw_entry on all entries from this line
         for e in entries:
@@ -564,6 +705,78 @@ class TranscriptScanner:
         return entries
 
     @staticmethod
+    def _parse_progress(
+        data: dict, parent_agent_id: str, session_id: str, line_number: int, timestamp: str
+    ) -> list[dict[str, Any]]:
+        """Parse a progress entry, attributing subagent content to the subagent's agent_id.
+
+        Progress entries wrap subagent messages in:
+          data.type = "agent_progress"
+          data.agentId = "<subagent_id>"
+          data.message.type = "assistant" | "user"
+          data.message.message = { role, content, usage, model, ... }
+        """
+        inner = data.get("data", {})
+        progress_type = inner.get("type", "")
+
+        if progress_type != "agent_progress":
+            # Non-subagent progress (hook_progress, etc.) — store as raw entry
+            return [TranscriptScanner._make_entry(
+                parent_agent_id, session_id, "progress",
+                line_number, timestamp,
+            )]
+
+        subagent_id = inner.get("agentId", parent_agent_id)
+        msg_wrapper = inner.get("message", {})
+        msg_type = msg_wrapper.get("type", "")  # "assistant" or "user"
+        inner_msg = msg_wrapper.get("message", {})
+
+        if not isinstance(inner_msg, dict) or not inner_msg.get("content"):
+            # Empty progress update (streaming start, etc.) — store as raw
+            return [TranscriptScanner._make_entry(
+                subagent_id, session_id, "progress",
+                line_number, timestamp,
+            )]
+
+        if msg_type == "assistant":
+            # Rebuild a data dict that _parse_assistant can handle
+            synthetic = {"message": inner_msg, "timestamp": timestamp}
+            return TranscriptScanner._parse_assistant(
+                synthetic, subagent_id, session_id, line_number, timestamp
+            )
+        elif msg_type == "user":
+            content = inner_msg.get("content", "")
+            entries: list[dict[str, Any]] = []
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_result":
+                        result_text = TranscriptScanner._extract_tool_result_text(
+                            block.get("content", "")
+                        )
+                        entries.append(TranscriptScanner._make_entry(
+                            subagent_id, session_id, "tool_result",
+                            line_number, timestamp,
+                            content=result_text,
+                            tool_use_id=block.get("tool_use_id"),
+                        ))
+            elif isinstance(content, str) and content.strip():
+                entries.append(TranscriptScanner._make_entry(
+                    subagent_id, session_id, "user",
+                    line_number, timestamp,
+                    content=content,
+                ))
+            return entries if entries else [TranscriptScanner._make_entry(
+                subagent_id, session_id, "progress",
+                line_number, timestamp,
+            )]
+
+        # Unknown msg_type — store as raw
+        return [TranscriptScanner._make_entry(
+            subagent_id, session_id, "progress",
+            line_number, timestamp,
+        )]
+
+    @staticmethod
     def _extract_tool_result_text(content: Any) -> str:
         """Extract displayable text from a tool_result content block."""
         if isinstance(content, str):
@@ -696,12 +909,20 @@ class TranscriptScanner:
                 text = result.get("content") or result.get("detailedContent") or ""
             else:
                 text = str(result) if result else ""
+            # Copilot stores model on tool.execution_complete
+            model = payload.get("model")
             entries = [mk(
                 agent_id, session_id, "tool_result", line_number, timestamp,
                 content=text,
                 tool_use_id=payload.get("toolCallId"),
                 metadata={"success": payload.get("success", True)},
+                model=model,
             )]
+
+        else:
+            # Store every other line type as a raw entry so we have a complete
+            # copy of the JSONL in the database.
+            entries = [mk(agent_id, session_id, entry_type or "unknown", line_number, timestamp)]
 
         # Stamp raw_entry on all entries from this line
         for e in entries:

@@ -27,6 +27,7 @@ HOOK_EVENTS = [
     'SessionStart',
     'SessionEnd',
     'Stop',
+    'StopFailure',
     'UserPromptSubmit',
     'PreToolUse',
     'PostToolUse',
@@ -39,8 +40,12 @@ HOOK_EVENTS = [
     'Notification',
     'ConfigChange',
     'PreCompact',
+    'PostCompact',
+    'InstructionsLoaded',
     'WorktreeCreate',
     'WorktreeRemove',
+    'Elicitation',
+    'ElicitationResult',
 ]
 
 # Stale files to clean up from ~/.claude/hooks/
@@ -61,14 +66,20 @@ def log(message, color=RESET):
 
 
 def get_hook_script_path():
-    """Return the absolute path to the hook script in this project."""
+    """Copy claude_hook.py to ~/.minion-orchestra/hooks/ and return that path."""
+    import shutil
     script_dir = Path(__file__).resolve().parent
-    hook_path = script_dir / 'hooks' / 'claude_hook.py'
-    if not hook_path.exists():
-        log(f"Hook script not found at {hook_path}", RED)
+    hook_source = script_dir / 'hooks' / 'claude_hook.py'
+    if not hook_source.exists():
+        log(f"Hook script not found at {hook_source}", RED)
         log("Make sure you're running setup from the app directory", YELLOW)
         sys.exit(1)
-    return str(hook_path)
+
+    mo_hooks_dir = Path.home() / '.minion-orchestra' / 'hooks'
+    mo_hooks_dir.mkdir(parents=True, exist_ok=True)
+    hook_dest = mo_hooks_dir / 'claude_hook.py'
+    shutil.copy2(hook_source, hook_dest)
+    return str(hook_dest)
 
 
 def clean_stale_files(hooks_dir):
@@ -122,7 +133,7 @@ def clean_old_hook_entries(settings):
             del hooks[event]
 
     # Remove events that are no longer valid
-    for old_event in ['PostCompact', 'ContextTruncation']:
+    for old_event in ['ContextTruncation']:
         if old_event in hooks:
             cleaned += len(hooks[old_event])
             del hooks[old_event]

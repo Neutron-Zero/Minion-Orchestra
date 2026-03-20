@@ -552,10 +552,10 @@ async def get_sessions(
 
 
 async def get_completed_sessions(limit: int = 100) -> list[dict[str, Any]]:
-    """Return the most recent completed/offline sessions for restoring on startup."""
+    """Return the most recent sessions for restoring on startup."""
     db = _get_db()
     cursor = await db.execute(
-        "SELECT * FROM sessions WHERE status IN ('completed', 'offline') "
+        "SELECT * FROM sessions "
         "ORDER BY start_time DESC LIMIT ?",
         (limit,),
     )
@@ -813,6 +813,17 @@ async def get_entries_needing_backfill(agent_id: str) -> list[dict[str, Any]]:
     )
     rows = await cursor.fetchall()
     return [dict(r) for r in rows]
+
+
+async def get_existing_line_numbers(agent_id: str) -> set[int]:
+    """Return the set of line_numbers that already have transcript entries for this agent."""
+    db = _get_db()
+    cursor = await db.execute(
+        "SELECT DISTINCT line_number FROM transcript_entries WHERE agent_id = ?",
+        (agent_id,),
+    )
+    rows = await cursor.fetchall()
+    return {r[0] for r in rows}
 
 
 async def batch_update_transcript_tokens(updates: list[tuple]) -> None:

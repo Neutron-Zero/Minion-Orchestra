@@ -38,6 +38,7 @@ OFFLINE_THRESHOLD_SECONDS = 60 * 60   # 1 hour
 
 # Base path for Claude Code session files
 CLAUDE_PROJECTS_DIR = os.path.expanduser("~/.claude/projects")
+COPILOT_SESSION_DIR = os.path.expanduser("~/.copilot/session-state")
 
 
 class _JsonlEventHandler(FileSystemEventHandler):
@@ -108,6 +109,8 @@ class SessionWatcher:
         handler = _JsonlEventHandler(self)
         self._observer = Observer()
         self._observer.schedule(handler, CLAUDE_PROJECTS_DIR, recursive=True)
+        if os.path.isdir(COPILOT_SESSION_DIR):
+            self._observer.schedule(handler, COPILOT_SESSION_DIR, recursive=True)
         self._observer.daemon = True
         self._observer.start()
         logger.info("Session watcher started on %s", CLAUDE_PROJECTS_DIR)
@@ -180,9 +183,14 @@ class SessionWatcher:
 
         Returns a dict with keys:
             session_id, cwd, git_branch, status, current_tool,
-            model, last_activity, agent_name
+            model, last_activity, agent_name, source_tool
         or None if the file cannot be parsed.
         """
+        # Detect copilot sessions by path
+        is_copilot = COPILOT_SESSION_DIR in file_path
+        if is_copilot:
+            return self._parse_copilot_session_state(file_path)
+
         lines = self._read_tail_lines(file_path)
         if not lines:
             return None
@@ -262,7 +270,100 @@ class SessionWatcher:
             "model": model,
             "last_activity": last_activity,
             "agent_name": agent_name,
+            "source_tool": "claude-code",
         }
+
+    def _parse_copilot_session_state(self, file_path: str) -> dict | None:
+        """Parse a Copilot events.jsonl file for session state."""
+        # Session ID is the parent directory name
+        session_id = os.path.basename(os.path.dirname(file_path))
+        if not session_id or session_id == "session-state":
+            return None
+
+        lines = self._read_tail_lines(file_path)
+        if not lines:
+            return None
+
+        entries = []
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+
+        if not entries:
+            return None
+
+        cwd = None
+        git_branch = None
+        model = None
+        last_activity = None
+        current_tool = None
+
+        for entry in entries:
+            ts = entry.get("timestamp")
+            if ts:
+                last_activity = ts
+            data = entry.get("data") or {}
+            etype = entry.get("type", "")
+
+            if etype == "session.start":
+                ctx = data.get("context", {})
+                if isinstance(ctx, dict):
+                    cwd = cwd or ctx.get("cwd")
+                    git_branch = git_branch or ctx.get("branch")
+
+            if etype == "tool.execution_complete":
+                model = data.get("model") or model
+
+            if etype == "tool.execution_start":
+                current_tool = data.get("toolName")
+            elif etype == "tool.execution_complete":
+                current_tool = None
+
+        # Determine status from last entry
+        last_entry = entries[-1]
+        status = self._derive_copilot_status(last_entry)
+
+        agent_name = f"Copilot: {os.path.basename(cwd)}" if cwd else f"Copilot: {session_id[:8]}"
+
+        return {
+            "session_id": session_id,
+            "cwd": cwd,
+            "git_branch": git_branch,
+            "status": status,
+            "current_tool": current_tool,
+            "model": model,
+            "last_activity": last_activity,
+            "agent_name": agent_name,
+            "source_tool": "copilot-cli",
+        }
+
+    def _derive_copilot_status(self, last_entry: dict) -> str:
+        """Derive status from a Copilot events.jsonl entry."""
+        timestamp_str = last_entry.get("timestamp")
+        if timestamp_str:
+            try:
+                ts = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+                age = (datetime.now(timezone.utc) - ts).total_seconds()
+                if age > OFFLINE_THRESHOLD_SECONDS:
+                    return "offline"
+                if age > IDLE_THRESHOLD_SECONDS:
+                    return "idle"
+            except (ValueError, TypeError):
+                pass
+
+        etype = last_entry.get("type", "")
+        if etype in ("tool.execution_start", "assistant.turn_start"):
+            return "working"
+        if etype == "assistant.turn_end":
+            return "idle"
+        if etype == "user.message":
+            return "working"
+        return "idle"
 
     def _derive_status(self, last_entry: dict) -> str:
         """Derive agent status from the last JSONL entry.
@@ -344,48 +445,65 @@ class SessionWatcher:
         the process scanner. Does NOT create new agents -- only adds
         session metadata (git branch, model, session_id) to existing ones.
         """
-        if not os.path.isdir(CLAUDE_PROJECTS_DIR):
-            return
-
-        # Build a cwd -> agent lookup from already-registered agents
         existing_agents = self._agent_manager.get_all_agents()
         if not existing_agents:
             return
 
         enriched = 0
-        for project_dir in os.listdir(CLAUDE_PROJECTS_DIR):
-            full_project = os.path.join(CLAUDE_PROJECTS_DIR, project_dir)
-            if not os.path.isdir(full_project):
-                continue
-            for filename in os.listdir(full_project):
-                if not filename.endswith(".jsonl"):
+
+        # Scan Claude Code JSONL files
+        if os.path.isdir(CLAUDE_PROJECTS_DIR):
+            for project_dir in os.listdir(CLAUDE_PROJECTS_DIR):
+                full_project = os.path.join(CLAUDE_PROJECTS_DIR, project_dir)
+                if not os.path.isdir(full_project):
                     continue
-                file_path = os.path.join(full_project, filename)
-                try:
-                    state = self._parse_session_state(file_path)
-                    if not state or state["status"] == "offline":
+                for filename in os.listdir(full_project):
+                    if not filename.endswith(".jsonl"):
                         continue
-                    # Try to find an existing agent to enrich (by cwd match)
-                    session_cwd = state.get("cwd", "")
-                    for agent in existing_agents:
-                        if agent.working_directory == session_cwd and not agent.session_data:
-                            _, sid = self._agent_manager.find_agent_by_id(agent.id)
-                            agent.session_data = {"sessionId": state["session_id"]}
-                            if state.get("git_branch"):
-                                agent.session_data["gitBranch"] = state["git_branch"]
-                            if state.get("model"):
-                                agent.session_data["model"] = state["model"]
-                            if state.get("agent_name"):
-                                agent.name = state["agent_name"]
-                            if sid:
-                                self._agent_manager.set_agent(sid, agent)
-                            enriched += 1
-                            break
-                except Exception:
-                    logger.exception("Error scanning session file: %s", file_path)
+                    file_path = os.path.join(full_project, filename)
+                    enriched += self._try_enrich_agent(file_path, existing_agents)
+
+        # Scan Copilot JSONL files
+        if os.path.isdir(COPILOT_SESSION_DIR):
+            for session_dir in os.listdir(COPILOT_SESSION_DIR):
+                file_path = os.path.join(COPILOT_SESSION_DIR, session_dir, "events.jsonl")
+                if os.path.isfile(file_path):
+                    enriched += self._try_enrich_agent(file_path, existing_agents)
 
         if enriched:
             logger.info("Session watcher enriched %d agent(s) with JSONL metadata", enriched)
+
+    def _try_enrich_agent(self, file_path: str, existing_agents: list) -> int:
+        """Try to enrich an existing agent from a JSONL file. Returns 1 if enriched, 0 otherwise."""
+        try:
+            state = self._parse_session_state(file_path)
+            if not state or state["status"] == "offline":
+                return 0
+            session_cwd = state.get("cwd", "")
+            source_tool = state.get("source_tool", "claude-code")
+            for agent in existing_agents:
+                # Match by cwd and agent type
+                is_copilot_agent = agent.id.startswith("copilot-") or agent.type == "copilot-cli"
+                is_copilot_session = source_tool == "copilot-cli"
+                if is_copilot_agent != is_copilot_session:
+                    continue
+                if agent.working_directory == session_cwd and not agent.session_data:
+                    _, sid = self._agent_manager.find_agent_by_id(agent.id)
+                    agent.session_data = {"sessionId": state["session_id"]}
+                    if state.get("git_branch"):
+                        agent.session_data["gitBranch"] = state["git_branch"]
+                    if state.get("model"):
+                        agent.session_data["model"] = state["model"]
+                    if state.get("source_tool"):
+                        agent.session_data["source_tool"] = state["source_tool"]
+                    if state.get("agent_name"):
+                        agent.name = state["agent_name"]
+                    if sid:
+                        self._agent_manager.set_agent(sid, agent)
+                    return 1
+        except Exception:
+            logger.exception("Error scanning session file: %s", file_path)
+        return 0
 
     # ------------------------------------------------------------------
     # Agent registration
@@ -398,6 +516,7 @@ class SessionWatcher:
         """
         session_id = session_state["session_id"]
         cwd = session_state.get("cwd")
+        source_tool = session_state.get("source_tool", "claude-code")
 
         # Parse the last_activity timestamp
         last_activity_str = session_state.get("last_activity")
@@ -416,7 +535,11 @@ class SessionWatcher:
             if agent.session_data and (agent.session_data or {}).get("sessionId") == session_id:
                 matched = True
             elif cwd and agent.working_directory == cwd and not agent.session_data:
-                matched = True
+                # Only match same tool type
+                is_copilot_agent = agent.id.startswith("copilot-") or agent.type == "copilot-cli"
+                is_copilot_session = source_tool == "copilot-cli"
+                if is_copilot_agent == is_copilot_session:
+                    matched = True
 
             if matched:
                 _, existing_sid = self._agent_manager.find_agent_by_id(agent.id)
@@ -427,6 +550,8 @@ class SessionWatcher:
                     agent.session_data["gitBranch"] = session_state["git_branch"]
                 if session_state.get("model"):
                     agent.session_data["model"] = session_state["model"]
+                if source_tool:
+                    agent.session_data["source_tool"] = source_tool
                 agent.last_activity = last_activity
                 if existing_sid:
                     self._agent_manager.set_agent(existing_sid, agent)

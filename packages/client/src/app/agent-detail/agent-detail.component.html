@@ -113,6 +113,20 @@
         </div>
       </div>
 
+      <ng-container *ngIf="parentAgent">
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section">
+          <span class="section-label">Parent Agent</span>
+          <div class="subagent-list">
+            <div class="subagent-item" (click)="navigateToParent()">
+              <span class="status-dot" [style.backgroundColor]="getStatusColor(parentAgent.status)"></span>
+              <span class="subagent-name">{{ parentAgent.name }}</span>
+              <span class="subagent-status">{{ parentAgent.status }}</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
       <ng-container *ngIf="agent.total_input_tokens > 0 || agent.total_output_tokens > 0">
         <div class="sidebar-divider"></div>
         <div class="sidebar-section">

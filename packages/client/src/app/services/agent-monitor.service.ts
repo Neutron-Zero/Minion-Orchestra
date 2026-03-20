@@ -687,6 +687,9 @@ export class AgentMonitorService implements OnDestroy {
     if (type === 'copilot-cli') {
       return `copilot-${shortId}`;
     }
+    if (type === 'subagent') {
+      return `subagent-${shortId}`;
+    }
     return `agent-${shortId}`;
   }
 
